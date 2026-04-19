@@ -1,4 +1,5 @@
 import urllib.request
+import subprocess
 import os
 import random
 import math
@@ -7,9 +8,11 @@ import concurrent.futures
 import threading
 import traceback
 import time
+from datetime import datetime
 from typing import List, Tuple, Optional
 from urllib.error import URLError, HTTPError
-from PySide2.QtCore import QObject, Signal, Slot, QThread
+from PySide2.QtCore import QObject, Signal, Slot, QThread,Qt
+from PySide2.QtWidgets import *
 
 
 # 线程安全的计数器
@@ -311,48 +314,8 @@ class GoogleMapDownloader(QObject):
             self.error_occurred.emit("下载错误",
                                      f"{error_msg}\n堆栈跟踪:\n{traceback.format_exc()}")
 
-    def batch_download(self, level_start, level_end, max_workers_per_level=50):
-        """批量下载多个缩放级别"""
-        try:
-            for zoom in range(level_start, level_end + 1):
-                if self._stop_requested:
-                    break
-
-                self.level = zoom
-                self.status_changed.emit(f"开始下载缩放级别: {zoom}")
-
-                # 动态调整线程数
-                if zoom <= 15:
-                    workers = max_workers_per_level
-                elif zoom <= 18:
-                    workers = max_workers_per_level // 2
-                else:
-                    workers = max_workers_per_level // 4
-
-                self.max_workers = workers
-                self.status_changed.emit(f"使用 {workers} 个线程")
-
-                # 执行下载
-                self.start_download()
-
-                if self._stop_requested:
-                    break
-
-                # 级别间暂停
-                if zoom < level_end:
-                    self.status_changed.emit(f"等待5秒后开始下一级别...")
-                    time.sleep(5)
-
-            if not self._stop_requested:
-                self.status_changed.emit("所有级别下载完成!")
-
-        except Exception as e:
-            error_msg = f"批量下载过程发生错误: {str(e)}"
-            self.error_occurred.emit("批量下载错误",
-                                     f"{error_msg}\n堆栈跟踪:\n{traceback.format_exc()}")
 
 
-# 使用示例（在PySide2界面中）
 class DownloadManager:
     """下载管理器，用于在PySide2界面中管理下载"""
 
@@ -445,70 +408,451 @@ class DownloadManager:
 
 
 # 在PySide2界面中的使用示例
-"""
-# 在您的PySide2主窗口类中
+#
+# class MainWindow(QMainWindow):
+#     def __init__(self):
+#         super().__init__()
+#         self.download_manager = DownloadManager(parent_widget=self)
+#         self.setup_ui()
+#
+#     def setup_ui(self):
+#         # 设置窗口属性
+#         self.setWindowTitle("下载管理器")
+#         self.resize(800, 600)
+#
+#         # 创建中心部件
+#         central_widget = QWidget()
+#         self.setCentralWidget(central_widget)
+#
+#         # 创建主布局
+#         main_layout = QVBoxLayout(central_widget)
+#
+#         # 创建按钮布局
+#         button_layout = QHBoxLayout()
+#
+#         # 添加开始下载按钮
+#         self.download_btn = QPushButton("开始下载")
+#         self.download_btn.clicked.connect(self.start_download)
+#         button_layout.addWidget(self.download_btn)
+#
+#         # 添加停止按钮
+#         self.stop_btn = QPushButton("停止下载")
+#         self.stop_btn.clicked.connect(self.stop_download)
+#         self.stop_btn.setEnabled(False)
+#         button_layout.addWidget(self.stop_btn)
+#
+#         button_layout.addStretch()  # 添加弹性空间
+#
+#         # 添加进度条
+#         self.progress_bar = QProgressBar()
+#         self.progress_bar.setAlignment(Qt.AlignCenter)
+#
+#         # 添加日志文本框
+#         self.log_text = QTextEdit()
+#         self.log_text.setReadOnly(True)
+#
+#         # 将组件添加到主布局
+#         main_layout.addLayout(button_layout)
+#         main_layout.addWidget(self.progress_bar)
+#         main_layout.addWidget(self.log_text)
+#
+#     def start_download(self):
+#         # 获取参数
+#         level = 21
+#         LT_lat = 36.1610
+#         LT_lon = 103.5533
+#         RB_lat = 36.0203
+#         RB_lon = 103.9557
+#         root_dir = "D:\\satellite\\"
+#
+#         # 开始下载
+#         self.download_manager.start_download(
+#             level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50
+#         )
+#
+#         # 更新按钮状态
+#         self.download_btn.setEnabled(False)
+#         self.stop_btn.setEnabled(True)
+#
+#     def stop_download(self):
+#         self.download_manager.stop_download()
+#         self.download_btn.setEnabled(True)
+#         self.stop_btn.setEnabled(False)
+#
+
+# 命令行测试
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.download_manager = DownloadManager(parent_widget=self)
+        self.setWindowTitle("Google 卫星地图瓦片下载器")
+        self.resize(950, 750)
+
+        # 使用 parent_widget=None，避免 DownloadManager 重复弹窗，
+        # 所有 UI 反馈统一由 MainWindow 处理
+        self.download_manager = DownloadManager(parent_widget=None)
+
         self.setup_ui()
+        self.apply_styles()
 
     def setup_ui(self):
-        # 创建界面元素...
-        # 添加开始下载按钮
-        self.download_btn = QPushButton("开始下载", self)
-        self.download_btn.clicked.connect(self.start_download)
+        central = QWidget()
+        self.setCentralWidget(central)
+        main_layout = QVBoxLayout(central)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(15, 15, 15, 15)
 
-        # 添加停止按钮
-        self.stop_btn = QPushButton("停止下载", self)
-        self.stop_btn.clicked.connect(self.stop_download)
-        self.stop_btn.setEnabled(False)
+        # ==================== 参数设置区 ====================
+        param_group = QGroupBox("下载参数")
+        form_layout = QFormLayout(param_group)
 
-        # 添加进度条
-        self.progress_bar = QProgressBar(self)
+        self.level_spin = QSpinBox()
+        self.level_spin.setRange(1, 22)
+        self.level_spin.setValue(16)
+        form_layout.addRow("缩放级别 (1-22):", self.level_spin)
 
-        # 添加日志文本框
-        self.log_text = QTextEdit(self)
+        self.lt_lat_spin = QDoubleSpinBox()
+        self.lt_lat_spin.setRange(-90.0, 90.0)
+        self.lt_lat_spin.setDecimals(6)
+        self.lt_lat_spin.setValue(36.161000)
+        form_layout.addRow("左上角纬度:", self.lt_lat_spin)
+
+        self.lt_lon_spin = QDoubleSpinBox()
+        self.lt_lon_spin.setRange(-180.0, 180.0)
+        self.lt_lon_spin.setDecimals(6)
+        self.lt_lon_spin.setValue(103.553300)
+        form_layout.addRow("左上角经度:", self.lt_lon_spin)
+
+        self.rb_lat_spin = QDoubleSpinBox()
+        self.rb_lat_spin.setRange(-90.0, 90.0)
+        self.rb_lat_spin.setDecimals(6)
+        self.rb_lat_spin.setValue(36.020300)
+        form_layout.addRow("右下角纬度:", self.rb_lat_spin)
+
+        self.rb_lon_spin = QDoubleSpinBox()
+        self.rb_lon_spin.setRange(-180.0, 180.0)
+        self.rb_lon_spin.setDecimals(6)
+        self.rb_lon_spin.setValue(103.955700)
+        form_layout.addRow("右下角经度:", self.rb_lon_spin)
+
+        path_layout = QHBoxLayout()
+        self.path_edit = QLineEdit()
+        self.path_edit.setPlaceholderText("请选择瓦片保存目录...")
+        self.path_edit.setText(os.path.join("D:\\", "satellite") + os.sep)
+        self.browse_btn = QPushButton("浏览")
+        self.browse_btn.setFixedWidth(120)
+        self.browse_btn.clicked.connect(self.browse_directory)
+        path_layout.addWidget(self.path_edit)
+        path_layout.addWidget(self.browse_btn)
+        form_layout.addRow("保存路径:", path_layout)
+
+        self.workers_spin = QSpinBox()
+        self.workers_spin.setRange(1, 4096)
+        self.workers_spin.setValue(512)
+        form_layout.addRow("并发线程数:", self.workers_spin)
+
+        main_layout.addWidget(param_group)
+
+        # ==================== 进度显示区 ====================
+        progress_group = QGroupBox("下载进度")
+        progress_layout = QVBoxLayout(progress_group)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("%p%  (%v / %m)")
+        progress_layout.addWidget(self.progress_bar)
+
+        self.status_label = QLabel("就绪 — 请设置参数后点击“开始下载”")
+        self.status_label.setAlignment(Qt.AlignCenter)
+        progress_layout.addWidget(self.status_label)
+
+        main_layout.addWidget(progress_group)
+
+        # ==================== 日志显示区 ====================
+        log_group = QGroupBox("运行日志")
+        log_layout = QVBoxLayout(log_group)
+
+        self.log_text = QTextEdit()
         self.log_text.setReadOnly(True)
+        self.log_text.setLineWrapMode(QTextEdit.WidgetWidth)
+        log_layout.addWidget(self.log_text)
+
+        main_layout.addWidget(log_group, 1)  # 日志区占据主要伸缩空间
+
+        # ==================== 按钮区 ====================
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        self.start_btn = QPushButton("▶ 开始下载")
+        self.start_btn.setFixedHeight(34)
+        self.start_btn.clicked.connect(self.start_download)
+        btn_layout.addWidget(self.start_btn)
+
+        self.stop_btn = QPushButton("⏹ 停止下载")
+        self.stop_btn.setFixedHeight(34)
+        self.stop_btn.setEnabled(False)
+        self.stop_btn.clicked.connect(self.stop_download)
+        btn_layout.addWidget(self.stop_btn)
+
+        self.open_dir_btn = QPushButton("📂 打开目录")
+        self.open_dir_btn.setFixedHeight(34)
+        self.open_dir_btn.clicked.connect(self.open_save_directory)
+        btn_layout.addWidget(self.open_dir_btn)
+
+        self.clear_log_btn = QPushButton("🗑 清空日志")
+        self.clear_log_btn.setFixedHeight(34)
+        self.clear_log_btn.clicked.connect(self.clear_log)
+        btn_layout.addWidget(self.clear_log_btn)
+
+        main_layout.addLayout(btn_layout)
+
+        # 状态栏
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage("就绪")
+
+    def apply_styles(self):
+        self.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 1px solid #c0c0c0;
+                border-radius: 6px;
+                margin-top: 12px;
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 12px;
+                padding: 0 6px;
+            }
+            QPushButton {
+                padding: 4px 16px;
+                font-weight: 500;
+            }
+            QPushButton:disabled {
+                color: #888888;
+            }
+            QTextEdit {
+                font-family: "Microsoft YaHei Mono", Consolas, "Courier New", monospace;
+                font-size: 12px;
+                background-color: #fafafa;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+            }
+            QProgressBar {
+                text-align: center;
+                height: 22px;
+                border-radius: 4px;
+            }
+            QProgressBar::chunk {
+                background-color: #4CAF50;
+                border-radius: 4px;
+            }
+            QDoubleSpinBox, QSpinBox, QLineEdit {
+                padding: 3px;
+            }
+        """)
+
+    # ==================== 功能槽函数 ====================
+
+    def browse_directory(self):
+        current = self.path_edit.text().strip() or "."
+        dir_path = QFileDialog.getExistingDirectory(self, "选择保存目录", current)
+        if dir_path:
+            self.path_edit.setText(os.path.normpath(dir_path) + os.sep)
+
+    def open_save_directory(self):
+        path = self.path_edit.text().strip()
+        if not path:
+            QMessageBox.warning(self, "提示", "请先设置保存路径")
+            return
+        if not os.path.exists(path):
+            try:
+                os.makedirs(path, exist_ok=True)
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"无法创建目录：{e}")
+                return
+        norm_path = os.path.normpath(path)
+        if sys.platform == "win32":
+            os.startfile(norm_path)
+        else:
+            subprocess.run(["xdg-open", norm_path])
+
+    def clear_log(self):
+        self.log_text.clear()
+
+    def append_log(self, message, color="#333333"):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        html = (f'<span style="color:#999999">[{timestamp}]</span> '
+                f'<span style="color:{color}">{message}</span>')
+        self.log_text.append(html)
+
+    def validate_inputs(self):
+        lt_lat = self.lt_lat_spin.value()
+        lt_lon = self.lt_lon_spin.value()
+        rb_lat = self.rb_lat_spin.value()
+        rb_lon = self.rb_lon_spin.value()
+        path = self.path_edit.text().strip()
+
+        if not path:
+            QMessageBox.warning(self, "输入错误", "请指定瓦片保存路径")
+            return False
+        if lt_lat <= rb_lat:
+            QMessageBox.warning(self, "输入错误",
+                                "左上角纬度必须大于右下角纬度（请确认地理范围是否正确）")
+            return False
+        if lt_lon >= rb_lon:
+            QMessageBox.warning(self, "输入错误",
+                                "左上角经度必须小于右下角经度（请确认地理范围是否正确）")
+            return False
+
+        # 尝试创建目录验证路径有效性
+        try:
+            os.makedirs(path, exist_ok=True)
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"保存路径无效或无法创建：{e}")
+            return False
+        return True
 
     def start_download(self):
-        # 获取参数
-        level = 21
-        LT_lat = 36.1610
-        LT_lon = 103.5533
-        RB_lat = 36.0203
-        RB_lon = 103.9557
-        root_dir = "D:\\satellite\\"
+        if not self.validate_inputs():
+            return
 
-        # 开始下载
+        level = self.level_spin.value()
+        lt_lat = self.lt_lat_spin.value()
+        lt_lon = self.lt_lon_spin.value()
+        rb_lat = self.rb_lat_spin.value()
+        rb_lon = self.rb_lon_spin.value()
+        root_dir = self.path_edit.text().strip()
+        max_workers = self.workers_spin.value()
+
+        # 重置 UI 状态
+        self.progress_bar.setValue(0)
+        self.start_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        self.clear_log_btn.setEnabled(False)
+        self.status_label.setText("正在准备任务...")
+        self.status_bar.showMessage("下载中...")
+
+        self.append_log("=" * 45, "#666666")
+        self.append_log("启动下载任务", "#0066cc")
+        self.append_log(f"缩放级别: {level}  |  线程数: {max_workers}", "#555555")
+        self.append_log(f"范围: ({lt_lat:.6f}, {lt_lon:.6f}) → ({rb_lat:.6f}, {rb_lon:.6f})",
+                        "#555555")
+        self.append_log(f"保存路径: {root_dir}", "#555555")
+        self.append_log("=" * 45, "#666666")
+
+        # 启动后台下载
         self.download_manager.start_download(
-            level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50
+            level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers
         )
 
-        # 更新按钮状态
-        self.download_btn.setEnabled(False)
-        self.stop_btn.setEnabled(True)
+        # 将下载器信号连接到主界面（DownloadManager 内部已处理流程，这里补充 UI 反馈）
+        d = self.download_manager.downloader
+        if d:
+            d.error_occurred.connect(self.on_downloader_error)
+            d.progress_updated.connect(self.on_downloader_progress)
+            d.download_complete.connect(self.on_downloader_complete)
+            d.status_changed.connect(self.on_downloader_status)
 
     def stop_download(self):
+        self.append_log("用户请求停止下载...", "#ff6600")
         self.download_manager.stop_download()
-        self.download_btn.setEnabled(True)
+        # 由于手动中断不会触发 download_complete，需手动恢复按钮
+        self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
+        self.clear_log_btn.setEnabled(True)
+        self.status_label.setText("已停止")
+        self.status_bar.showMessage("已停止")
 
-    # 可以添加其他方法连接到DownloadManager的信号
-"""
+    def on_downloader_error(self, error_title, error_detail):
+        # 日志中只显示简要信息，防止堆栈跟踪刷屏
+        self.append_log(f"[错误] {error_title}", "#cc0000")
+        if len(error_detail) < 180:
+            self.append_log(error_detail, "#cc0000")
 
-# 命令行测试
+    def on_downloader_progress(self, current, total, success):
+        if total > 0:
+            self.progress_bar.setValue(int(current / total * 100))
+        self.status_label.setText(f"正在下载: {current} / {total}  (成功 {success})")
+        self.status_bar.showMessage(f"进度: {current}/{total}")
+
+    def on_downloader_complete(self, results):
+        elapsed = results.get("elapsed_time", 0)
+        success_cnt = results.get("success", 0)
+        failed_cnt = results.get("failed", 0)
+
+        self.progress_bar.setValue(100)
+        self.append_log("=" * 45, "#666666")
+        self.append_log("下载任务结束", "#009900")
+        self.append_log(f"总耗时: {elapsed:.2f} 秒", "#555555")
+        self.append_log(f"成功: {success_cnt}  |  失败: {failed_cnt}", "#555555")
+        self.append_log("=" * 45, "#666666")
+
+        self.start_btn.setEnabled(True)
+        self.stop_btn.setEnabled(False)
+        self.clear_log_btn.setEnabled(True)
+        self.status_label.setText(
+            f"完成 — 成功 {success_cnt}, 失败 {failed_cnt}, 耗时 {elapsed:.1f}s"
+        )
+        self.status_bar.showMessage("下载完成")
+
+        if failed_cnt > 0:
+            QMessageBox.warning(self, "下载完成",
+                                f"任务已完成，但存在 {failed_cnt} 个文件下载失败。\n"
+                                f"总耗时: {elapsed:.2f} 秒\n"
+                                f"详细错误请查看日志文件及上方日志窗口。")
+        else:
+            QMessageBox.information(self, "下载完成",
+                                    f"全部下载成功！\n总耗时: {elapsed:.2f} 秒")
+
+    def on_downloader_status(self, status):
+        # 处理内部状态消息，特别是“被中断/被取消”等需要恢复 UI 的场景
+        clean = status.strip().replace("\n", " | ")
+        if not clean:
+            return
+
+        if "被中断" in clean or "被取消" in clean:
+            self.start_btn.setEnabled(True)
+            self.stop_btn.setEnabled(False)
+            self.clear_log_btn.setEnabled(True)
+            self.status_label.setText("下载已中断")
+            self.status_bar.showMessage("已中断")
+
+        self.append_log(clean, "#444444")
+
+    def closeEvent(self, event):
+        thread = self.download_manager.download_thread
+        if thread and thread.isRunning():
+            reply = QMessageBox.question(
+                self, "确认退出",
+                "当前有下载任务正在进行，确定要退出吗？",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                self.download_manager.stop_download()
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
+
+
 if __name__ == "__main__":
     # 测试下载器
-    downloader = GoogleMapDownloader(
-        level=21,
-        LT_lat=36.1610,
-        LT_lon=103.5533,
-        RB_lat=36.0203,
-        RB_lon=103.9557,
-        root_dir="D:\\satellite\\",
-        max_workers=20
-    )
+    # downloader = GoogleMapDownloader(
+    #     level=10,
+    #     LT_lat=36.1610,
+    #     LT_lon=103.5533,
+    #     RB_lat=36.0203,
+    #     RB_lon=103.9557,
+    #     root_dir="D:\\satellite\\",
+    #     max_workers=20
+    # )
 
 
     # 连接信号到控制台输出
@@ -531,10 +875,15 @@ if __name__ == "__main__":
         print(f"[状态] {status}")
 
 
-    downloader.error_occurred.connect(on_error)
-    downloader.progress_updated.connect(on_progress)
-    downloader.download_complete.connect(on_complete)
-    downloader.status_changed.connect(on_status)
+    # downloader.error_occurred.connect(on_error)
+    # downloader.progress_updated.connect(on_progress)
+    # downloader.download_complete.connect(on_complete)
+    # downloader.status_changed.connect(on_status)
+    #
+    # # 启动下载
+    # downloader.start_download()
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec_())
 
-    # 启动下载
-    downloader.start_download()
