@@ -15,10 +15,10 @@ from PySide2.QtCore import QObject, Signal, Slot, QThread,Qt
 from PySide2.QtWidgets import *
 
 source_dict={
-    1:"Google Earth",
-    2:"高德矢量底图",
-    3:"高德卫星影像",
-    4:"高德路网标记",
+    0:"Google Earth",
+    1:"高德矢量底图",
+    2:"高德卫星影像",
+    3:"高德路网标记",
 }
 
 # 线程安全的计数器
