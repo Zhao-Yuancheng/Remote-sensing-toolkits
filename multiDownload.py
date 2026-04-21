@@ -14,6 +14,12 @@ from urllib.error import URLError, HTTPError
 from PySide2.QtCore import QObject, Signal, Slot, QThread,Qt
 from PySide2.QtWidgets import *
 
+source_dict={
+    1:"Google Earth",
+    2:"高德矢量底图",
+    3:"高德卫星影像",
+    4:"高德路网标记",
+}
 
 # 线程安全的计数器
 class ThreadSafeCounter:
@@ -54,9 +60,10 @@ class GoogleMapDownloader(QObject):
     download_complete = Signal(dict)  # 完成信号: 结果字典
     status_changed = Signal(str)  # 状态变化信号
 
-    def __init__(self, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50,
+    def __init__(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50,
                  parent=None):
         super().__init__(parent)
+        self.source = source
         self.level = level
         self.LT_lat = LT_lat
         self.LT_lon = LT_lon
@@ -272,10 +279,18 @@ class GoogleMapDownloader(QObject):
                 if self._stop_requested:
                     break
 
-                path = os.path.join(self.root_dir, str(zoom), str(x))
+                path = os.path.join(self.root_dir, source_dict[self.source],str(zoom), str(x))
 
                 for y in range(lefttop[1], rightbottom[1]):
-                    tilepath = f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}"
+                    if self.source == 0:
+                        tilepath = f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}"
+                    elif self.source == 1:
+                        tilepath = f"https://webrd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={zoom}"  # 高德矢量底图
+                    elif self.source == 2:
+                        tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={zoom}"  # 高德卫星影像
+                    else:
+                        tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={zoom}" #高德路网标记
+
                     filepath = os.path.join(path, f"{y}.png")
                     tasks.append((tilepath, filepath, x, y))
 
@@ -324,11 +339,11 @@ class DownloadManager:
         self.downloader = None
         self.download_thread = None
 
-    def start_download(self, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50):
+    def start_download(self, source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50):
         """开始下载"""
         # 创建下载器
         self.downloader = GoogleMapDownloader(
-            level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers
+            source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers
         )
 
         # 创建线程
@@ -430,6 +445,15 @@ class MainWindow(QMainWindow):
         # ==================== 参数设置区 ====================
         param_group = QGroupBox("下载参数")
         form_layout = QFormLayout(param_group)
+
+        self.source_comboBox = QComboBox()
+        self.source_comboBox.addItem("Google Earth")
+        self.source_comboBox.addItem("高德矢量底图")
+        self.source_comboBox.addItem("高德卫星影像")
+        self.source_comboBox.addItem("高德路网标记")
+        self.source_comboBox.setObjectName(u"source_comboBox")
+        form_layout.addRow("数据源:", self.source_comboBox)
+
 
         self.level_spin = QSpinBox()
         self.level_spin.setRange(1, 22)
@@ -646,6 +670,7 @@ class MainWindow(QMainWindow):
         if not self.validate_inputs():
             return
 
+        source = self.source_comboBox.currentIndex()
         level = self.level_spin.value()
         lt_lat = self.lt_lat_spin.value()
         lt_lon = self.lt_lon_spin.value()
@@ -672,7 +697,7 @@ class MainWindow(QMainWindow):
 
         # 启动后台下载
         self.download_manager.start_download(
-            level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers
+            source,level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers
         )
 
         # 将下载器信号连接到主界面（DownloadManager 内部已处理流程，这里补充 UI 反馈）
@@ -811,4 +836,3 @@ if __name__ == "__main__":
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-
