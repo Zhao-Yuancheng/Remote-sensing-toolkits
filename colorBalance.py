@@ -1,28 +1,19 @@
 import math
-import sys
 import time
-import  matplotlib
+import tkinter as tk
+from tkinter import filedialog, messagebox, simpledialog
 
 import cv2
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+from PIL import Image, ImageFile
 from scipy import signal
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
 from skimage.color import rgb2lab, rgba2rgb
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
-import numpy as np
-import skimage
-import matplotlib.pyplot as plt
-import cv2
-import sys
-import math
-import time
-from skimage import transform, exposure
-import matplotlib
 matplotlib.use('TkAgg')
 
 w = None
@@ -30,13 +21,11 @@ h = None
 original_image = None
 image = None
 
-
 NUM_BLOCK_INIT_V = 5
 NUM_BLOCK_INIT_H = 5
 
 INPUT_FILE_PATH = None
 OUTPUT_FILE_PATH = None
-
 
 plt.rcParams['font.family'] = 'SimHei'
 matplotlib.set_loglevel("error")
@@ -123,7 +112,7 @@ def detect_original_horizontal(y, dy):
 
 
 def process_image():
-    global h,w,original_image,image
+    global h, w, original_image, image
     # 1. 打开输入文件
     filetypes = [
         ('Image files', '*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif'),
@@ -266,7 +255,6 @@ def process_image():
     plt.title("选中的分割线（绿色）")
     plt.show(block=True)
 
-
     plt.close('all')
 
     # 显示分块
@@ -359,7 +347,7 @@ def process_image():
         plt.close('all')
         return
 
-    print(0,original_image.shape)
+    print(0, original_image.shape)
 
     # 处理原图
     x_divisions = []
@@ -373,7 +361,7 @@ def process_image():
 
     original_slice_v = [0] + list(x_divisions) + [w]
     original_slice_h = [0] + list(y_divisions) + [h]
-    print(1,original_image.shape)
+    print(1, original_image.shape)
 
     for i in range(plt_row_len):
         for j in range(plt_col_len):
@@ -391,7 +379,7 @@ def process_image():
                         original_slice_v[basic_block_v_idx]:original_slice_v[basic_block_v_idx + 1]
                     ], channel_axis=-1)
 
-    print(2,original_image.shape)
+    print(2, original_image.shape)
     # 保存图片
     # 添加数据类型转换
     if original_image.dtype == np.float64 or original_image.dtype == np.float32:
@@ -416,8 +404,9 @@ def process_image():
         messagebox.showerror("错误", f"保存图片失败: {str(e)}")
 
 
-
 if __name__ == "__main__":
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    Image.MAX_IMAGE_PIXELS = None
     # 创建主窗口
     root = tk.Tk()
     root.title("图片分割与直方图匹配工具")
