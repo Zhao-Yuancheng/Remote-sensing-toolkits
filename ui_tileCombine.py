@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'tileCombineonxzzq.ui'
+## Form generated from reading UI file 'tileCombinelwndAo.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.15.15
 ##
@@ -17,7 +17,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(800, 829)
+        MainWindow.resize(800, 772)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -250,7 +250,10 @@ class Ui_MainWindow(object):
         self.imageLabel = QLabel(self.centralwidget)
         self.imageLabel.setObjectName(u"imageLabel")
         self.imageLabel.setMinimumSize(QSize(300, 400))
+        self.imageLabel.setAutoFillBackground(False)
+        self.imageLabel.setStyleSheet(u"background-color:rgb(220, 220, 220)")
         self.imageLabel.setFrameShape(QFrame.Box)
+        self.imageLabel.setFrameShadow(QFrame.Plain)
         self.imageLabel.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout.addWidget(self.imageLabel)
@@ -268,34 +271,34 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u56fe\u5408\u5e76\u5de5\u5177", None))
         self.label.setText(QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u56fe\u6839\u76ee\u5f55\uff1a", None))
-        self.tileDirEdit.setText(QCoreApplication.translate("MainWindow", u".\\satellite\\\u9ad8\u5fb7\u536b\u661f\u5f71\u50cf\\14", None))
+        self.tileDirEdit.setText("")
         self.browseTileDirBtn.setText(QCoreApplication.translate("MainWindow", u"\u6d4f\u89c8...", None))
         self.xAxisGroup.setTitle(QCoreApplication.translate("MainWindow", u"x\u8f74/\u5217\u53f7", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"\u8d77\u59cb", None))
-        self.xStartEdit.setText(QCoreApplication.translate("MainWindow", u"12904", None))
+        self.xStartEdit.setText("")
         self.label_3.setText(QCoreApplication.translate("MainWindow", u"\u7ec8\u6b62", None))
-        self.xEndEdit.setText(QCoreApplication.translate("MainWindow", u"12922", None))
+        self.xEndEdit.setText("")
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"\u6b65\u957f", None))
-        self.xStepEdit.setText(QCoreApplication.translate("MainWindow", u"1", None))
+        self.xStepEdit.setText("")
         self.yAxisGroup.setTitle(QCoreApplication.translate("MainWindow", u"y\u8f74/\u884c\u53f7", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"\u8d77\u59cb", None))
-        self.yStartEdit.setText(QCoreApplication.translate("MainWindow", u"6424", None))
+        self.yStartEdit.setText("")
         self.label_6.setText(QCoreApplication.translate("MainWindow", u"\u7ec8\u6b62", None))
-        self.yEndEdit.setText(QCoreApplication.translate("MainWindow", u"6431", None))
+        self.yEndEdit.setText("")
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"\u6b65\u957f", None))
-        self.yStepEdit.setText(QCoreApplication.translate("MainWindow", u"1", None))
+        self.yStepEdit.setText("")
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u5c5e\u6027", None))
-        self.label_10.setText(QCoreApplication.translate("MainWindow", u"\u957f\u5ea6", None))
-        self.tileLengthLineEdit.setText(QCoreApplication.translate("MainWindow", u"256", None))
+        self.label_10.setText(QCoreApplication.translate("MainWindow", u"\u9ad8\u5ea6", None))
+        self.tileLengthLineEdit.setText("")
         self.label_11.setText(QCoreApplication.translate("MainWindow", u"\u5bbd\u5ea6", None))
-        self.tileWidthLineEdit.setText(QCoreApplication.translate("MainWindow", u"256", None))
+        self.tileWidthLineEdit.setText("")
         self.label_71.setText(QCoreApplication.translate("MainWindow", u"\u901a\u9053", None))
-        self.tileChannelsLineEdit.setText(QCoreApplication.translate("MainWindow", u"3", None))
+        self.tileChannelsLineEdit.setText("")
         self.label_8.setText(QCoreApplication.translate("MainWindow", u"\u4fdd\u5b58\u6587\u4ef6\uff1a", None))
-        self.saveFileEdit.setText(QCoreApplication.translate("MainWindow", u".\\satellite\\\u9ad8\u5fb7\u536b\u661f\u5f71\u50cf\\14\\integrate.png", None))
+        self.saveFileEdit.setText("")
         self.browseSaveFileBtn.setText(QCoreApplication.translate("MainWindow", u"\u6d4f\u89c8...", None))
         self.label_9.setText(QCoreApplication.translate("MainWindow", u"\u8fdb\u7a0b\u6570\uff1a", None))
-        self.nProcEdit.setText(QCoreApplication.translate("MainWindow", u"8", None))
+        self.nProcEdit.setText(QCoreApplication.translate("MainWindow", u"4", None))
         self.processBtn.setText(QCoreApplication.translate("MainWindow", u"\u5f00\u59cb\u5904\u7406", None))
         self.imageLabel.setText(QCoreApplication.translate("MainWindow", u"\u8fdb\u5ea6\u5c55\u793a\u533a\u57df", None))
     # retranslateUi
