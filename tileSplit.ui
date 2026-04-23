@@ -58,7 +58,7 @@
          <item>
           <widget class="QLineEdit" name="xStartEdit">
            <property name="text">
-            <string/>
+            <string>0</string>
            </property>
           </widget>
          </item>
@@ -76,7 +76,7 @@
          <item>
           <widget class="QLineEdit" name="xStepEdit">
            <property name="text">
-            <string/>
+            <string>1</string>
            </property>
           </widget>
          </item>
@@ -103,7 +103,7 @@
          <item>
           <widget class="QLineEdit" name="yStartEdit">
            <property name="text">
-            <string/>
+            <string>0</string>
            </property>
           </widget>
          </item>
@@ -121,7 +121,7 @@
          <item>
           <widget class="QLineEdit" name="yStepEdit">
            <property name="text">
-            <string/>
+            <string>1</string>
            </property>
           </widget>
          </item>
@@ -204,8 +204,49 @@
       <item>
        <widget class="QLineEdit" name="nProcEdit">
         <property name="text">
-         <string>4</string>
+         <string>8</string>
         </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>保存格式：</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="resultFormatComboBox">
+        <item>
+         <property name="text">
+          <string>.png</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>.jpg</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>.jpeg</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>.tiff</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>.tif</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>.gif</string>
+         </property>
+        </item>
        </widget>
       </item>
       <item>

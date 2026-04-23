@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'tileSplitUgHobi.ui'
+## Form generated from reading UI file 'tileSplitNMPyiM.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.15.15
 ##
@@ -175,6 +175,22 @@ class Ui_MainWindow(object):
 
         self.horizontalLayout_12.addWidget(self.nProcEdit)
 
+        self.label_3 = QLabel(self.centralwidget)
+        self.label_3.setObjectName(u"label_3")
+
+        self.horizontalLayout_12.addWidget(self.label_3)
+
+        self.resultFormatComboBox = QComboBox(self.centralwidget)
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.addItem("")
+        self.resultFormatComboBox.setObjectName(u"resultFormatComboBox")
+
+        self.horizontalLayout_12.addWidget(self.resultFormatComboBox)
+
         self.processBtn = QPushButton(self.centralwidget)
         self.processBtn.setObjectName(u"processBtn")
 
@@ -211,14 +227,14 @@ class Ui_MainWindow(object):
         self.browseOpenFileBtn.setText(QCoreApplication.translate("MainWindow", u"\u6d4f\u89c8...", None))
         self.xAxisGroup.setTitle(QCoreApplication.translate("MainWindow", u"x\u8f74/\u5217\u53f7", None))
         self.label_2.setText(QCoreApplication.translate("MainWindow", u"\u8d77\u59cb", None))
-        self.xStartEdit.setText("")
+        self.xStartEdit.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.label_4.setText(QCoreApplication.translate("MainWindow", u"\u6b65\u957f", None))
-        self.xStepEdit.setText("")
+        self.xStepEdit.setText(QCoreApplication.translate("MainWindow", u"1", None))
         self.yAxisGroup.setTitle(QCoreApplication.translate("MainWindow", u"y\u8f74/\u884c\u53f7", None))
         self.label_5.setText(QCoreApplication.translate("MainWindow", u"\u8d77\u59cb", None))
-        self.yStartEdit.setText("")
+        self.yStartEdit.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.label_7.setText(QCoreApplication.translate("MainWindow", u"\u6b65\u957f", None))
-        self.yStepEdit.setText("")
+        self.yStepEdit.setText(QCoreApplication.translate("MainWindow", u"1", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u5c5e\u6027", None))
         self.label_10.setText(QCoreApplication.translate("MainWindow", u"\u9ad8\u5ea6", None))
         self.tileHeightLineEdit.setText("")
@@ -228,7 +244,15 @@ class Ui_MainWindow(object):
         self.tileDirEdit.setText("")
         self.browseTileDirBtn.setText(QCoreApplication.translate("MainWindow", u"\u6d4f\u89c8...", None))
         self.label_9.setText(QCoreApplication.translate("MainWindow", u"\u8fdb\u7a0b\u6570\uff1a", None))
-        self.nProcEdit.setText(QCoreApplication.translate("MainWindow", u"4", None))
+        self.nProcEdit.setText(QCoreApplication.translate("MainWindow", u"8", None))
+        self.label_3.setText(QCoreApplication.translate("MainWindow", u"\u4fdd\u5b58\u683c\u5f0f\uff1a", None))
+        self.resultFormatComboBox.setItemText(0, QCoreApplication.translate("MainWindow", u".png", None))
+        self.resultFormatComboBox.setItemText(1, QCoreApplication.translate("MainWindow", u".jpg", None))
+        self.resultFormatComboBox.setItemText(2, QCoreApplication.translate("MainWindow", u".jpeg", None))
+        self.resultFormatComboBox.setItemText(3, QCoreApplication.translate("MainWindow", u".tiff", None))
+        self.resultFormatComboBox.setItemText(4, QCoreApplication.translate("MainWindow", u".tif", None))
+        self.resultFormatComboBox.setItemText(5, QCoreApplication.translate("MainWindow", u".gif", None))
+
         self.processBtn.setText(QCoreApplication.translate("MainWindow", u"\u5f00\u59cb\u5904\u7406", None))
         self.imageLabel.setText(QCoreApplication.translate("MainWindow", u"\u8fdb\u5ea6\u5c55\u793a\u533a\u57df", None))
     # retranslateUi

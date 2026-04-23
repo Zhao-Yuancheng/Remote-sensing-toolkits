@@ -7,7 +7,7 @@ import os
 import cv2
 
 
-def integrate(result_root,save_x, save_y,result_format, x1,y1,x2,y2,shm_name,h,w,channels):
+def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_name, h, w, channels):
     try:
         existing_shm = shared_memory.SharedMemory(name=shm_name, create=False)
 
@@ -24,28 +24,8 @@ def integrate(result_root,save_x, save_y,result_format, x1,y1,x2,y2,shm_name,h,w
             array = tot_map[y1:y2, x1:x2]
         else:
             array = tot_map[y1:y2, x1:x2,:]
-        # print("save_path:",save_path)
-        # print("x1:",x1,"x2:",x2,"y1:",y1,"y2:",y2,"array:",array)
         Image.fromarray(array).save(save_path)
-
-
-
-
-        # # 读取图片
-        # array = np.array(Image.open(file_path), dtype=np.uint8)
-        #
-        # # 放置到正确位置
-        # if channels == 1:
-        #     tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-        #     x_idx * seg_width:(x_idx + 1) * seg_width] = array
-        # else:  # channels == 3
-        #     tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-        #     x_idx * seg_width:(x_idx + 1) * seg_width, :] = array
-
         existing_shm.close()
-
-        # if not idx % 250:
-        #     print(f"{idx}:\tx_idx={x_idx}, y_idx={y_idx}, file_path={file_path}", flush=True)
     except Exception as e:
         print(f"Error in integrate at (save_x={save_x}, save_y={save_y}): {e}", flush=True)
         raise
@@ -123,7 +103,7 @@ if __name__ == "__main__":
 
     with Pool(processes=args.proc_num) as pool:
         try:
-            pool.starmap(integrate, params)
+            pool.starmap(split_tile, params)
         except Exception as e:
             print(f"Error in pool: {e}")
             shm.close()

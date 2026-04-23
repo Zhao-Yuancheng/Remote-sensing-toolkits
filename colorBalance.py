@@ -1,6 +1,9 @@
 import math
 import time
 import tkinter as tk
+from multiprocessing import Pool
+from multiprocessing import cpu_count
+from multiprocessing import shared_memory
 from tkinter import filedialog, messagebox, simpledialog
 
 import cv2
@@ -21,8 +24,8 @@ h = None
 original_image = None
 image = None
 
-NUM_BLOCK_INIT_V = 5
-NUM_BLOCK_INIT_H = 5
+# NUM_BLOCK_INIT_V = 5
+# NUM_BLOCK_INIT_H = 5
 
 INPUT_FILE_PATH = None
 OUTPUT_FILE_PATH = None
@@ -111,6 +114,30 @@ def detect_original_horizontal(y, dy):
     return p_h[0].tolist() + y1
 
 
+def single_original_process_image(x1, y1, x2, y2, bx1, by1, bx2, by2, h, w, shm_name):
+    # 一个进程处理原图
+    try:
+        shm = shared_memory.SharedMemory(name=shm_name, create=False)
+        original_image = np.ndarray((h, w, 3), dtype=np.uint8, buffer=shm.buf)
+
+        original_image[
+            y1:y2,
+            x1:x2
+        ] = skimage.exposure.match_histograms(
+            original_image[
+                y1:y2,
+                x1:x2
+            ],
+            original_image[
+                by1:by2,
+                bx1:bx2
+            ], channel_axis=-1)
+    except Exception as e:
+        raise
+    finally:
+        shm.close()
+
+
 def process_image():
     global h, w, original_image, image
     # 1. 打开输入文件
@@ -140,6 +167,9 @@ def process_image():
     scale_factor = 800 / max(w, h)  # 目标最大边长为800
     new_w, new_h = int(w * scale_factor), int(h * scale_factor)
     image = skimage.transform.resize(original_image, (new_h, new_w), anti_aliasing=True)
+    num_block_scale_factor = 5 / min(w, h)
+    NUM_BLOCK_INIT_V, NUM_BLOCK_INIT_H = math.ceil(w * num_block_scale_factor), math.ceil(
+        h * num_block_scale_factor)
 
     # 创建GUI窗口
     root = tk.Tk()
@@ -253,7 +283,11 @@ def process_image():
 
     plt.imshow(show_split_image)
     plt.title("选中的分割线（绿色）")
-    plt.show(block=True)
+    plt.show(block=False)
+
+    if not messagebox.askyesno("确认", "是否继续处理？"):
+        plt.close('all')
+        return
 
     plt.close('all')
 
@@ -347,7 +381,7 @@ def process_image():
         plt.close('all')
         return
 
-    print(0, original_image.shape)
+    # print(0, original_image.shape)
 
     # 处理原图
     x_divisions = []
@@ -361,25 +395,33 @@ def process_image():
 
     original_slice_v = [0] + list(x_divisions) + [w]
     original_slice_h = [0] + list(y_divisions) + [h]
-    print(1, original_image.shape)
 
+    shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
+    shm_name = shm.name
+
+    params_list = []
     for i in range(plt_row_len):
         for j in range(plt_col_len):
             if (i, j) != (basic_block_h_idx, basic_block_v_idx):
-                original_image[
-                    original_slice_h[i]:original_slice_h[i + 1],
-                    original_slice_v[j]:original_slice_v[j + 1]
-                ] = skimage.exposure.match_histograms(
-                    original_image[
-                        original_slice_h[i]:original_slice_h[i + 1],
-                        original_slice_v[j]:original_slice_v[j + 1]
-                    ],
-                    original_image[
-                        original_slice_h[basic_block_h_idx]:original_slice_h[basic_block_h_idx + 1],
-                        original_slice_v[basic_block_v_idx]:original_slice_v[basic_block_v_idx + 1]
-                    ], channel_axis=-1)
+                # x1,y1,x2,y2,bx1,by1,bx2,by2,h,w,shm_name
+                params_list.append((
+                    original_slice_v[j],
+                    original_slice_h[i],
+                    original_slice_v[j + 1],
+                    original_slice_h[i + 1],
+                    original_slice_v[basic_block_v_idx],
+                    original_slice_h[basic_block_h_idx],
+                    original_slice_v[basic_block_v_idx + 1],
+                    original_slice_h[basic_block_h_idx + 1],
+                    h,
+                    w,
+                    shm_name
+                ))
 
-    print(2, original_image.shape)
+    with Pool(cpu_count() // 2) as pool:
+        pool.starmap(single_original_process_image, params_list)
+
+    # print(2, original_image.shape)
     # 保存图片
     # 添加数据类型转换
     if original_image.dtype == np.float64 or original_image.dtype == np.float32:
@@ -394,7 +436,7 @@ def process_image():
         # 如果是其他类型，也转换为uint8
         original_image = original_image.astype(np.uint8)
 
-    print(3, original_image.shape, original_image.dtype, original_image.min(), original_image.max())
+    # print(3, original_image.shape, original_image.dtype, original_image.min(), original_image.max())
 
     # 保存图片
     try:
@@ -402,6 +444,9 @@ def process_image():
         messagebox.showinfo("成功", f"处理成功！图片已保存到：\n{OUTPUT_FILE_PATH}")
     except Exception as e:
         messagebox.showerror("错误", f"保存图片失败: {str(e)}")
+    finally:
+        shm.close()
+        shm.unlink()
 
 
 if __name__ == "__main__":
