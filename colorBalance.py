@@ -139,7 +139,10 @@ def single_original_process_image(x1, y1, x2, y2, bx1, by1, bx2, by2, h, w, shm_
 
 
 def process_image():
-    global h, w, original_image, image
+    global h, w, original_image, image, text_var
+    if not len(text_var.get()):
+        text_var.set("5")
+
     # 1. 打开输入文件
     filetypes = [
         ('Image files', '*.png *.jpg *.jpeg *.bmp *.tif *.tiff *.gif'),
@@ -155,19 +158,27 @@ def process_image():
         return
 
     try:
-        original_image = skimage.io.imread(INPUT_FILE_PATH)
-        if original_image.shape[2] == 4:
-            original_image = rgba2rgb(original_image)
+        input_image = skimage.io.imread(INPUT_FILE_PATH)
+        if input_image.shape[2] == 4:
+            input_image = rgba2rgb(input_image) * 255
+
     except Exception as e:
         messagebox.showerror("错误", f"无法读取图片: {str(e)}")
         return
 
-    h, w = original_image.shape[:2]
+    h, w = input_image.shape[:2]
 
+    shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
+    shm_name = shm.name
+    original_image = np.ndarray((h, w, 3), dtype=np.uint8, buffer=shm.buf)
+    original_image[:] = input_image
+    # del input_image
+    # plt.imshow(original_image)
+    # plt.show(block=False)
     scale_factor = 800 / max(w, h)  # 目标最大边长为800
     new_w, new_h = int(w * scale_factor), int(h * scale_factor)
     image = skimage.transform.resize(original_image, (new_h, new_w), anti_aliasing=True)
-    num_block_scale_factor = 5 / min(w, h)
+    num_block_scale_factor = int(text_var.get()) / min(w, h)
     NUM_BLOCK_INIT_V, NUM_BLOCK_INIT_H = math.ceil(w * num_block_scale_factor), math.ceil(
         h * num_block_scale_factor)
 
@@ -183,9 +194,16 @@ def process_image():
     plt.show(block=False)
 
     # 等待用户确认
-    if not messagebox.askyesno("确认", "是否继续处理？"):
+
+    # 创建临时隐藏的顶级窗口
+    temp_root = tk.Toplevel()
+    temp_root.withdraw()  # 隐藏临时窗口
+    if not messagebox.askyesno("确认", "是否继续处理？", parent=temp_root):
         plt.close('all')
         return
+    # 销毁临时窗口
+    temp_root.destroy()
+
     plt.close('all')
 
     peaks_v, grad_profile_v, grad_map_v = detect_color_boundaries_vertical(image,
@@ -219,12 +237,30 @@ def process_image():
             return
         try:
             choose_v_list = [int(i) - 1 for i in input_text.strip().split(" ") if i.isdigit()]
+            if not len(choose_v_list):
+                # 创建临时隐藏的顶级窗口
+                temp_root = tk.Toplevel()
+                temp_root.withdraw()  # 隐藏临时窗口
+                messagebox.showwarning("警告", "你未输入任何数字", parent=temp_root)
+                # 销毁临时窗口
+                temp_root.destroy()
+                continue
             if all(0 <= i < len(peaks_v) for i in choose_v_list):
                 break
             else:
-                messagebox.showwarning("警告", f"序号超出范围 (1-{len(peaks_v)})")
+                # 创建临时隐藏的顶级窗口
+                temp_root = tk.Toplevel()
+                temp_root.withdraw()  # 隐藏临时窗口
+                messagebox.showwarning("警告", f"序号超出范围 (1-{len(peaks_v)})", parent=temp_root)
+                # 销毁临时窗口
+                temp_root.destroy()
         except ValueError:
-            messagebox.showwarning("警告", "请输入有效的数字")
+            # 创建临时隐藏的顶级窗口
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()  # 隐藏临时窗口
+            messagebox.showwarning("警告", "请输入有效的数字", parent=temp_root)
+            # 销毁临时窗口
+            temp_root.destroy()
 
     # 使用对话框获取用户选择的水平分割线
     while True:
@@ -236,14 +272,33 @@ def process_image():
         if input_text is None:
             plt.close('all')
             return
+
         try:
             choose_h_list = [int(i) - 1 for i in input_text.strip().split(" ") if i.isdigit()]
+            if not len(choose_h_list):
+                # 创建临时隐藏的顶级窗口
+                temp_root = tk.Toplevel()
+                temp_root.withdraw()  # 隐藏临时窗口
+                messagebox.showwarning("警告", "你未输入任何数字", parent=temp_root)
+                # 销毁临时窗口
+                temp_root.destroy()
+                continue
             if all(0 <= i < len(peaks_h) for i in choose_h_list):
                 break
             else:
-                messagebox.showwarning("警告", f"序号超出范围 (1-{len(peaks_h)})")
+                # 创建临时隐藏的顶级窗口
+                temp_root = tk.Toplevel()
+                temp_root.withdraw()  # 隐藏临时窗口
+                messagebox.showwarning("警告", f"序号超出范围 (1-{len(peaks_h)})", parent=temp_root)
+                # 销毁临时窗口
+                temp_root.destroy()
         except ValueError:
-            messagebox.showwarning("警告", "请输入有效的数字")
+            # 创建临时隐藏的顶级窗口
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()  # 隐藏临时窗口
+            messagebox.showwarning("警告", "请输入有效的数字", parent=temp_root)
+            # 销毁临时窗口
+            temp_root.destroy()
 
     plt.close('all')
 
@@ -254,13 +309,23 @@ def process_image():
         try:
             choose_v_mask[i] = True
         except:
-            messagebox.showwarning("警告", f"{i + 1} 是无效的竖直分割线序号")
+            # 创建临时隐藏的顶级窗口
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()  # 隐藏临时窗口
+            messagebox.showwarning("警告", f"{i + 1} 是无效的竖直分割线序号", parent=temp_root)
+            # 销毁临时窗口
+            temp_root.destroy()
 
     for i in choose_h_list:
         try:
             choose_h_mask[i] = True
         except:
-            messagebox.showwarning("警告", f"{i + 1} 是无效的水平分割线序号")
+            # 创建临时隐藏的顶级窗口
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()  # 隐藏临时窗口
+            messagebox.showwarning("警告", f"{i + 1} 是无效的水平分割线序号", parent=temp_root)
+            # 销毁临时窗口
+            temp_root.destroy()
 
     peaks_v_sorted = np.sort(peaks_v)[choose_v_mask]
     peaks_h_sorted = np.sort(peaks_h)[choose_h_mask]
@@ -285,9 +350,14 @@ def process_image():
     plt.title("选中的分割线（绿色）")
     plt.show(block=False)
 
-    if not messagebox.askyesno("确认", "是否继续处理？"):
+    # 创建临时隐藏的顶级窗口
+    temp_root = tk.Toplevel()
+    temp_root.withdraw()  # 隐藏临时窗口
+    if not messagebox.askyesno("确认", "是否继续处理？", parent=temp_root):
         plt.close('all')
         return
+    # 销毁临时窗口
+    temp_root.destroy()
 
     plt.close('all')
 
@@ -329,10 +399,21 @@ def process_image():
             if 0 <= basic_block_h_idx < plt_row_len and 0 <= basic_block_v_idx < plt_col_len:
                 break
             else:
+                # 创建临时隐藏的顶级窗口
+                temp_root = tk.Toplevel()
+                temp_root.withdraw()  # 隐藏临时窗口
                 messagebox.showwarning("警告",
-                                       f"行号范围: 1-{plt_row_len}, 列号范围: 1-{plt_col_len}")
+                                       f"行号范围: 1-{plt_row_len}, 列号范围: 1-{plt_col_len}",
+                                       parent=temp_root)
+                # 销毁临时窗口
+                temp_root.destroy()
         except ValueError as e:
-            messagebox.showwarning("警告", f"输入无效: {str(e)}")
+            # 创建临时隐藏的顶级窗口
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()  # 隐藏临时窗口
+            messagebox.showwarning("警告", f"输入无效: {str(e)}", parent=temp_root)
+            # 销毁临时窗口
+            temp_root.destroy()
 
     plt.close('all')
 
@@ -361,12 +442,18 @@ def process_image():
     plt.imshow(image)
     plt.title("直方图匹配后的缩略图预览")
     plt.show(block=False)
+    
 
     # 确认是否继续
-    if not messagebox.askyesno("确认", "预览图已生成，是否继续处理原图？"):
+    # 创建临时隐藏的顶级窗口
+    temp_root = tk.Toplevel()
+    temp_root.withdraw()  # 隐藏临时窗口
+    if not messagebox.askyesno("确认", "预览图已生成，是否继续处理原图？", parent=temp_root):
         plt.close('all')
-        messagebox.showinfo("提示", "操作已取消")
+        messagebox.showinfo("提示", "操作已取消", parent=temp_root)
         return
+        # 销毁临时窗口
+        temp_root.destroy()
 
     plt.close('all')
 
@@ -395,9 +482,6 @@ def process_image():
 
     original_slice_v = [0] + list(x_divisions) + [w]
     original_slice_h = [0] + list(y_divisions) + [h]
-
-    shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
-    shm_name = shm.name
 
     params_list = []
     for i in range(plt_row_len):
@@ -436,17 +520,38 @@ def process_image():
         # 如果是其他类型，也转换为uint8
         original_image = original_image.astype(np.uint8)
 
-    # print(3, original_image.shape, original_image.dtype, original_image.min(), original_image.max())
-
     # 保存图片
+    # 创建临时隐藏的顶级窗口
+    temp_root = tk.Toplevel()
+    temp_root.withdraw()  # 隐藏临时窗口
     try:
         skimage.io.imsave(OUTPUT_FILE_PATH, original_image)
-        messagebox.showinfo("成功", f"处理成功！图片已保存到：\n{OUTPUT_FILE_PATH}")
+        messagebox.showinfo("成功", f"处理成功！图片已保存到：\n{OUTPUT_FILE_PATH}", parent=temp_root)
     except Exception as e:
-        messagebox.showerror("错误", f"保存图片失败: {str(e)}")
+        messagebox.showerror("错误", f"保存图片失败: {str(e)}", parent=temp_root)
     finally:
         shm.close()
         shm.unlink()
+        # 销毁临时窗口
+        temp_root.destroy()
+
+
+def on_closing():
+    root.destroy()
+    root.quit()
+
+
+def validate_range(value):
+    if not len(value):
+        return True
+    try:
+        number = int(value)
+        if 1 <= number <= 20:
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
 
 
 if __name__ == "__main__":
@@ -454,26 +559,36 @@ if __name__ == "__main__":
     Image.MAX_IMAGE_PIXELS = None
     # 创建主窗口
     root = tk.Tk()
-    root.title("图片分割与直方图匹配工具")
+    root.title("色彩平衡工具")
     root.geometry("300x150")
+
+    label = tk.Label(root,
+                     text='设置分割灵敏度：',
+                     font=("Simhei", 10),
+                     height=2,
+                     width=20
+                     )
+    label.pack(pady=10)
+
+    text_var = tk.StringVar(value="5")
+    entry = tk.Entry(root,
+                     font=("Arial", 10),
+                     textvariable=text_var,
+                     validate="key",
+                     validatecommand=(root.register(validate_range), "%P")
+                     )
+    entry.pack()
 
     # 添加按钮
     btn_process = tk.Button(
         root,
         text="开始处理图片",
         command=process_image,
-        font=("Arial", 12),
+        font=("Simhei", 10),
         height=2,
         width=20
     )
-    btn_process.pack(expand=True, padx=20, pady=20)
+    btn_process.pack(pady=20)
 
-    btn_exit = tk.Button(
-        root,
-        text="退出",
-        command=root.quit,
-        font=("Arial", 10)
-    )
-    btn_exit.pack(pady=10)
-
+    root.protocol("WM_DELETE_WINDOW", on_closing)
     root.mainloop()
