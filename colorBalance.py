@@ -24,9 +24,6 @@ h = None
 original_image = None
 image = None
 
-# NUM_BLOCK_INIT_V = 5
-# NUM_BLOCK_INIT_H = 5
-
 INPUT_FILE_PATH = None
 OUTPUT_FILE_PATH = None
 
@@ -94,8 +91,6 @@ def detect_original_vertical(x, dx):
     x2 = min(x + dx, w)
     img = original_image[:, x1:x2 + 1, :]
     p_v, grad_profile_v, grad_norm_v = detect_color_boundaries_vertical(img, num_blocks=3)
-    # plt.plot(grad_profile_v)
-    # plt.show(block=False)
     if len(p_v) == 0:
         return x
 
@@ -107,8 +102,6 @@ def detect_original_horizontal(y, dy):
     y1, y2 = max(0, y - dy), min(y + dy, h)
     img = original_image[y1:y2 + 1, :, :]
     p_h, grad_profile_h, grad_norm_h = detect_color_boundaries_horizontal(img, num_blocks=3)
-    # plt.plot(grad_profile_h)
-    # plt.show(block=False)
     if len(p_h) == 0:
         return y
     return p_h[0].tolist() + y1
@@ -172,9 +165,8 @@ def process_image():
     shm_name = shm.name
     original_image = np.ndarray((h, w, 3), dtype=np.uint8, buffer=shm.buf)
     original_image[:] = input_image
-    # del input_image
-    # plt.imshow(original_image)
-    # plt.show(block=False)
+    del input_image
+
     scale_factor = 800 / max(w, h)  # 目标最大边长为800
     new_w, new_h = int(w * scale_factor), int(h * scale_factor)
     image = skimage.transform.resize(original_image, (new_h, new_w), anti_aliasing=True)
@@ -191,6 +183,7 @@ def process_image():
     plt.imshow(image)
     plt.title("原始缩略图")
     plt.axis('off')
+    plt.tight_layout()
     plt.show(block=False)
 
     # 等待用户确认
@@ -223,6 +216,8 @@ def process_image():
 
     plt.imshow(show_split_image)
     plt.title("检测到的分割线")
+    plt.axis('off')
+    plt.tight_layout()
     plt.show(block=False)
 
     # 使用对话框获取用户选择的竖直分割线
@@ -348,6 +343,8 @@ def process_image():
 
     plt.imshow(show_split_image)
     plt.title("选中的分割线（绿色）")
+    plt.axis('off')
+    plt.tight_layout()
     plt.show(block=False)
 
     # 创建临时隐藏的顶级窗口
@@ -377,6 +374,8 @@ def process_image():
             ax.axis("off")
             ax.set_title(f"({i + 1},{j + 1})")
 
+    plt.tight_layout()
+    plt.axis('off')
     plt.tight_layout()
     plt.show(block=False)
 
@@ -441,6 +440,8 @@ def process_image():
     plt.figure(figsize=(10, 6))
     plt.imshow(image)
     plt.title("直方图匹配后的缩略图预览")
+    plt.axis('off')
+    plt.tight_layout()
     plt.show(block=False)
     
 
@@ -505,7 +506,6 @@ def process_image():
     with Pool(cpu_count() // 2) as pool:
         pool.starmap(single_original_process_image, params_list)
 
-    # print(2, original_image.shape)
     # 保存图片
     # 添加数据类型转换
     if original_image.dtype == np.float64 or original_image.dtype == np.float32:
