@@ -6,6 +6,7 @@ satellite
 *$py.class
 *.png
 *.jpg
+*.tif
 # C extensions
 *.so
 
