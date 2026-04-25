@@ -139,35 +139,13 @@ def single_original_process_image(x1, y1, x2, y2, bx1, by1, bx2, by2, h, w, shm_
     finally:
         shm.close()
 
-
-# 1. 移除所有GUI主窗口相关代码，包括 root, label, entry, btn_process, on_closing, validate_range
-# 2. 将文件对话框替换为命令行输入
-# 3. 将消息框(askyesno, showinfo, showerror, showwarning)替换为 print 和 input
-# 4. 将 plt.show(block=False) 的显示逻辑替换为终端图像输出
-
-# ========== 新增函数：切除白色边缘 ==========
 def cutWhiteEdge(plt_image):
-    """
-    切除PIL Image图像周围的白色（或接近白色）边缘。
-    参数:
-        plt_image: PIL.Image 对象
-    返回:
-        cropped_img: 切除白色边缘后的 PIL.Image 对象
-    """
-    # 将图像转换为numpy数组
     img_array = np.array(plt_image)
-
-    # 定义白色的阈值（RGB接近255,255,255），可以根据需要调整
-    # 使用较高的阈值以容忍接近白色的边缘
     white_threshold = 250
-    # 创建一个掩码，标记非白色的像素
-    # 任何通道的值低于阈值，则认为该像素不是白色
     non_white_mask = np.any(img_array < white_threshold, axis=-1)
 
-    # 如果没有非白色像素（整个图像都是白色），则返回原图
     if not np.any(non_white_mask):
         return plt_image
-
     # 找到非白色像素的边界
     rows = np.any(non_white_mask, axis=1)
     cols = np.any(non_white_mask, axis=0)
@@ -188,9 +166,7 @@ def cutWhiteEdge(plt_image):
     return cropped_img
 
 
-# ========== cutWhiteEdge 函数结束 ==========
 
-# ========== 新增函数：在终端显示matplotlib图形 ==========
 def show_plot_in_terminal(block=False):
     """
     替代 plt.show(block=False)，将当前图形显示在终端中。
@@ -206,17 +182,8 @@ def show_plot_in_terminal(block=False):
     print(str(term_plt_img))
     plt.close()  # 关闭图形以释放内存
 
-
-# ========== 终端显示函数结束 ==========
-
-# ========== 修改现有的 process_image 函数 ==========
 def process_image():
-    # ... (函数开头部分保持不变，直到文件选择) ...
     global h, w, original_image, image
-    # 删除对 text_var 的引用，改为从命令行参数或输入获取
-    # 原代码: if not len(text_var.get()): text_var.set("5")
-
-    # 1. 获取分割灵敏度（替换原Tkinter输入框）
     sensitivity = 5
     sensitivity_input = input("请输入分割灵敏度 (默认 5, 范围 1-20): ").strip()
     if sensitivity_input:
@@ -237,7 +204,6 @@ def process_image():
         print("未提供路径，操作取消。")
         return
 
-    # ... (图片读取、shared_memory 等处理逻辑完全不变) ...
     try:
         input_image = skimage.io.imread(INPUT_FILE_PATH)
         if input_image.shape[2] == 4:
@@ -379,9 +345,9 @@ def process_image():
     show_plot_in_terminal()
 
     # 6. 确认是否继续（替换 messagebox.askyesno）
-    print("\n是否继续处理？(yes/no):")
+    print("\n是否继续处理？(Y/n):")
     response = input("> ").strip().lower()
-    if response not in ['y', 'yes', '是', '1']:
+    if response not in ['y', 'yes','Y', 'Yes','是', '1','']:
         print("操作已取消。")
         return
 
