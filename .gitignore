@@ -1,7 +1,7 @@
 .idea/
 # Byte-compiled / optimized / DLL files
 __pycache__/
-测试文件/*
+test/*
 satellite
 *.py[codz]
 *$py.class
@@ -210,4 +210,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-/测试文件/
+/test/
