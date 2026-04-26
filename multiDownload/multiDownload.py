@@ -60,7 +60,7 @@ class GoogleMapDownloader(QObject):
     download_complete = Signal(dict)  # 完成信号: 结果字典
     status_changed = Signal(str)  # 状态变化信号
 
-    def __init__(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50,
+    def __init__(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,timeout,retries_num,
                  parent=None):
         super().__init__(parent)
         self.source = source
@@ -71,6 +71,8 @@ class GoogleMapDownloader(QObject):
         self.RB_lon = RB_lon
         self.root_dir = root_dir
         self.max_workers = max_workers
+        self.timeout = timeout
+        self.retries_num = retries_num
 
         # 线程安全计数器
         self.total_downloads = ThreadSafeCounter()
@@ -96,8 +98,8 @@ class GoogleMapDownloader(QObject):
             (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
         return (xtile, ytile)
 
-    def download_single_image(self, Tpath: str, Spath: str, x: int, y: int,
-                              max_retries: int = 3) -> bool:
+    def download_single_image(self, Tpath: str, Spath: str, x: int, y: int, timeout:int,
+                              max_retries: int) -> bool:
         """
         下载单个图片，带重试机制
         返回: True表示成功，False表示失败
@@ -125,7 +127,7 @@ class GoogleMapDownloader(QObject):
                 req.add_header('User-Agent', random.choice(agents))
 
                 # 设置超时
-                response = urllib.request.urlopen(req, timeout=30)
+                response = urllib.request.urlopen(req, timeout=timeout)
 
                 # 读取数据
                 data = response.read()
@@ -175,7 +177,7 @@ class GoogleMapDownloader(QObject):
         返回: (x, y, 是否成功)
         """
         Tpath, Spath, x, y = args
-        success = self.download_single_image(Tpath, Spath, x, y)
+        success = self.download_single_image(Tpath, Spath, x, y,self.timeout, self.retries_num)
         return x, y, success
 
     def parallel_download(self, tasks: List[Tuple[str, str, int, int]]) -> dict:
@@ -339,11 +341,11 @@ class DownloadManager:
         self.downloader = None
         self.download_thread = None
 
-    def start_download(self, source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers=50):
+    def start_download(self, source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers ,timeout,retries_num):
         """开始下载"""
         # 创建下载器
         self.downloader = GoogleMapDownloader(
-            source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers
+            source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,timeout,retries_num
         )
 
         # 创建线程
@@ -367,6 +369,14 @@ class DownloadManager:
         """停止下载"""
         if self.downloader:
             self.downloader.stop_download()
+
+        if self.download_thread:
+            QThread.sleep(3)
+            print("BEFORE TERMINATING")
+            self.download_thread.quit()
+            print("AFTER TERMINATED")
+            self.download_thread.wait()
+            print("AFTER WAITED")
 
     def on_download_error(self, error_title, error_detail):
         """处理下载错误"""
@@ -425,7 +435,7 @@ class DownloadManager:
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Google 卫星地图瓦片下载器")
+        self.setWindowTitle("多线程瓦片下载器")
         self.resize(950, 750)
 
         # 使用 parent_widget=None，避免 DownloadManager 重复弹窗，
@@ -452,13 +462,14 @@ class MainWindow(QMainWindow):
         self.source_comboBox.addItem("高德卫星影像")
         self.source_comboBox.addItem("高德路网标记")
         self.source_comboBox.setObjectName(u"source_comboBox")
+        self.source_comboBox.setCurrentIndex(2)
         form_layout.addRow("数据源:", self.source_comboBox)
 
 
         self.level_spin = QSpinBox()
         self.level_spin.setRange(1, 22)
         self.level_spin.setValue(16)
-        form_layout.addRow("缩放级别 (1-22):", self.level_spin)
+        form_layout.addRow("缩放级别(1-22):", self.level_spin)
 
         self.lt_lat_spin = QDoubleSpinBox()
         self.lt_lat_spin.setRange(-90.0, 90.0)
@@ -495,10 +506,40 @@ class MainWindow(QMainWindow):
         path_layout.addWidget(self.browse_btn)
         form_layout.addRow("保存路径:", path_layout)
 
+        network_layout = QHBoxLayout()
+        # self.workers_label = QLabel()
+        # self.workers_label.setFixedWidth(100)
+        # self.workers_label.setText("并发线程数：")
         self.workers_spin = QSpinBox()
         self.workers_spin.setRange(1, 4096)
-        self.workers_spin.setValue(512)
-        form_layout.addRow("并发线程数:", self.workers_spin)
+        self.workers_spin.setValue(8)
+
+        self.timeout_label = QLabel()
+        self.timeout_label.setFixedWidth(80)
+        self.timeout_label.setText("超时(s)：")
+        self.timeout_label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+        self.timeout_spin = QSpinBox()
+        self.timeout_spin.setRange(1, 1000)
+        self.timeout_spin.setValue(3)
+
+        self.retries_label = QLabel()
+        self.retries_label.setFixedWidth(100)
+        self.retries_label.setText("重试次数：")
+        self.retries_label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+        self.retries_spin = QSpinBox()
+        self.retries_spin.setRange(0, 1000)
+        self.retries_spin.setValue(2)
+
+        # network_layout.addWidget(self.workers_label)
+        network_layout.addWidget(self.workers_spin)
+        network_layout.addWidget(self.timeout_label)
+        network_layout.addWidget(self.timeout_spin)
+        network_layout.addWidget(self.retries_label)
+        network_layout.addWidget(self.retries_spin)
+
+        form_layout.addRow("并发线程数:",network_layout)
+
+        # form_layout.addRow("并发线程数:", self.workers_spin)
 
         main_layout.addWidget(param_group)
 
@@ -678,6 +719,8 @@ class MainWindow(QMainWindow):
         rb_lon = self.rb_lon_spin.value()
         root_dir = self.path_edit.text().strip()
         max_workers = self.workers_spin.value()
+        timeout = self.timeout_spin.value()
+        retries_num=self.retries_spin.value()
 
         # 重置 UI 状态
         self.progress_bar.setValue(0)
@@ -697,7 +740,7 @@ class MainWindow(QMainWindow):
 
         # 启动后台下载
         self.download_manager.start_download(
-            source,level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers
+            source,level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers,timeout,retries_num
         )
 
         # 将下载器信号连接到主界面（DownloadManager 内部已处理流程，这里补充 UI 反馈）
