@@ -5,7 +5,6 @@ from multiprocessing import shared_memory
 from multiprocessing import Pool
 from multiprocessing import freeze_support
 import os
-import cv2
 
 
 def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_name, h, w, channels):

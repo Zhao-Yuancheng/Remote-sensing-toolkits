@@ -7,7 +7,7 @@ from multiprocessing import shared_memory
 from multiprocessing import freeze_support
 from tkinter import filedialog, messagebox, simpledialog
 
-import cv2
+# import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -133,6 +133,44 @@ def single_original_process_image(x1, y1, x2, y2, bx1, by1, bx2, by2, h, w, shm_
         shm.close()
 
 
+def draw_horizontal_line_robust(image, y, line_width=3, color=(255, 0, 0)):
+    """水平线"""
+    h, w = image.shape[:2]
+
+    # 计算线宽范围
+    half = line_width // 2
+    top = y - half
+    bottom = y + half + 1
+
+    # 确保不越界
+    top = max(0, top)
+    bottom = min(h, bottom)
+
+    # 只有当线至少有一部分在图像内时才绘制
+    if top < bottom:
+        image[top:bottom, :] = color
+
+    return image
+
+def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
+    """竖直线"""
+    h, w = image.shape[:2]
+
+    # 计算线宽范围
+    half = line_width // 2
+    left = x - half
+    right = x + half + 1
+
+    # 确保不越界
+    left = max(0, left)
+    right = min(w, right)
+
+    # 只有当线至少有一部分在图像内时才绘制
+    if left < right:
+        image[:, left:right] = color
+
+    return image
+
 def process_image():
     global h, w, original_image, image, text_var
     if not len(text_var.get()):
@@ -210,11 +248,11 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v):
-        cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
-                 (255, 0, 0), 3)
+        # cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
+        #          (255, 0, 0), 3)
+        draw_vertical_line_robust(show_split_image,boundary_v,line_width=3,color=(255, 0, 0))
     for i, boundary_h in enumerate(peaks_h):
-        cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
-                 (255, 0, 0), 3)
+        draw_horizontal_line_robust(show_split_image,boundary_h,line_width=3,color=(255, 0, 0))
 
     plt.imshow(show_split_image)
     plt.title("检测到的分割线")
@@ -337,11 +375,13 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v_sorted):
-        cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
-                 (0, 255, 0), 3)
+        # cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
+        #          (0, 255, 0), 3)
+        draw_vertical_line_robust(show_split_image,boundary_v,3,(0,255,0))
     for i, boundary_h in enumerate(peaks_h_sorted):
-        cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
-                 (0, 255, 0), 3)
+        # cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
+        #          (0, 255, 0), 3)
+        draw_horizontal_line_robust(show_split_image,boundary_h,3,(0,255,0))
 
     plt.imshow(show_split_image)
     plt.title("选中的分割线（绿色）")

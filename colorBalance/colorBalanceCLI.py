@@ -6,17 +6,14 @@ from PIL import Image
 from term_image.image import AutoImage
 from multiprocessing import freeze_support
 
-# ... (前面的所有库导入保持不变，包括matplotlib, tkinter等) ...
 import math
 import time
-# 注意：tkinter 仅用于 filedialog 等模块，主窗口逻辑将被移除
 
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from multiprocessing import shared_memory
-# 删除主窗口相关的导入，如：from tkinter import Tk, Button, Label, Entry, StringVar
 
-import cv2
+# import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -143,11 +140,6 @@ def single_original_process_image(x1, y1, x2, y2, bx1, by1, bx2, by2, h, w, shm_
         shm.close()
 
 
-# 1. 移除所有GUI主窗口相关代码，包括 root, label, entry, btn_process, on_closing, validate_range
-# 2. 将文件对话框替换为命令行输入
-# 3. 将消息框(askyesno, showinfo, showerror, showwarning)替换为 print 和 input
-# 4. 将 plt.show(block=False) 的显示逻辑替换为终端图像输出
-
 # ========== 新增函数：切除白色边缘 ==========
 def cutWhiteEdge(plt_image):
     """
@@ -191,9 +183,6 @@ def cutWhiteEdge(plt_image):
     return cropped_img
 
 
-# ========== cutWhiteEdge 函数结束 ==========
-
-# ========== 新增函数：在终端显示matplotlib图形 ==========
 def show_plot_in_terminal(block=False):
     """
     替代 plt.show(block=False)，将当前图形显示在终端中。
@@ -210,7 +199,43 @@ def show_plot_in_terminal(block=False):
     plt.close()  # 关闭图形以释放内存
 
 
-# ========== 终端显示函数结束 ==========
+def draw_horizontal_line_robust(image, y, line_width=3, color=(255, 0, 0)):
+    """水平线"""
+    h, w = image.shape[:2]
+
+    # 计算线宽范围
+    half = line_width // 2
+    top = y - half
+    bottom = y + half + 1
+
+    # 确保不越界
+    top = max(0, top)
+    bottom = min(h, bottom)
+
+    # 只有当线至少有一部分在图像内时才绘制
+    if top < bottom:
+        image[top:bottom, :] = color
+
+    return image
+
+def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
+    """竖直线"""
+    h, w = image.shape[:2]
+
+    # 计算线宽范围
+    half = line_width // 2
+    left = x - half
+    right = x + half + 1
+
+    # 确保不越界
+    left = max(0, left)
+    right = min(w, right)
+
+    # 只有当线至少有一部分在图像内时才绘制
+    if left < right:
+        image[:, left:right] = color
+
+    return image
 
 # ========== 修改现有的 process_image 函数 ==========
 def process_image():
@@ -288,11 +313,9 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v):
-        cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
-                 (255, 0, 0), 1)
+        draw_vertical_line_robust(show_split_image, boundary_v, line_width=3, color=(255, 0, 0))
     for i, boundary_h in enumerate(peaks_h):
-        cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
-                 (255, 0, 0), 1)
+        draw_horizontal_line_robust(show_split_image, boundary_h, line_width=3, color=(255, 0, 0))
 
     plt.imshow(show_split_image)
     plt.axis('off')
@@ -369,12 +392,9 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v_sorted):
-        cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
-                 (0, 255, 0), 3)
+        draw_vertical_line_robust(show_split_image,boundary_v,3,(0,255,0))
     for i, boundary_h in enumerate(peaks_h_sorted):
-        cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
-                 (0, 255, 0), 3)
-
+        draw_horizontal_line_robust(show_split_image,boundary_h,3,(0,255,0))
     plt.imshow(show_split_image)
     plt.axis('off')
     plt.tight_layout()
