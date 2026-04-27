@@ -4,13 +4,15 @@ import tkinter as tk
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 from multiprocessing import shared_memory
+from multiprocessing import freeze_support
 from tkinter import filedialog, messagebox, simpledialog
 
 import cv2
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import skimage
+import skimage.io
+import skimage.transform
 from PIL import Image, ImageFile
 from scipy import signal
 from scipy.ndimage import gaussian_filter
@@ -555,6 +557,7 @@ def validate_range(value):
 
 
 if __name__ == "__main__":
+    freeze_support()
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     Image.MAX_IMAGE_PIXELS = None
     # 创建主窗口

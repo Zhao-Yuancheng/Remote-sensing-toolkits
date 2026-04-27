@@ -4,6 +4,7 @@ import io
 import sys
 from PIL import Image
 from term_image.image import AutoImage
+from multiprocessing import freeze_support
 
 # ... (前面的所有库导入保持不变，包括matplotlib, tkinter等) ...
 import math
@@ -24,6 +25,8 @@ from PIL import Image, ImageFile
 from scipy import signal
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
+import skimage.io
+import skimage.transform
 from skimage.color import rgb2lab, rgba2rgb
 
 matplotlib.use('Agg')  # 改为非交互式后端，因为不再需要GUI窗口
@@ -526,6 +529,7 @@ def process_image():
 if __name__ == "__main__":
     ImageFile.LOAD_TRUNCATED_IMAGES = True
     Image.MAX_IMAGE_PIXELS = None
+    freeze_support()
 
     print("=== 色彩平衡工具 (CLI 版本) ===\n")
     process_image()

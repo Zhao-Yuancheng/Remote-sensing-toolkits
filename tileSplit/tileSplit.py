@@ -1,7 +1,7 @@
 import sys
 from ui_tileSplit import Ui_MainWindow
-from PySide2 import QtCore, QtWidgets, QtGui
-from multiprocessing import Pool, shared_memory
+from PySide6 import QtCore, QtWidgets, QtGui
+from multiprocessing import Pool, shared_memory,freeze_support
 import os
 from PIL import Image
 import numpy as np
@@ -461,7 +461,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
 
 if __name__ == '__main__':
     Image.MAX_IMAGE_PIXELS = 1e15  # 设置PIL最大像素限制
+    freeze_support()
 
     app = QtWidgets.QApplication(sys.argv)
     window = MyApp()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

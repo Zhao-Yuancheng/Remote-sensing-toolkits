@@ -11,8 +11,8 @@ import time
 from datetime import datetime
 from typing import List, Tuple, Optional
 from urllib.error import URLError, HTTPError
-from PySide2.QtCore import QObject, Signal, Slot, QThread,Qt
-from PySide2.QtWidgets import *
+from PySide6.QtCore import QObject, Signal, Slot, QThread,Qt
+from PySide6.QtWidgets import *
 
 source_dict={
     0:"Google Earth",
@@ -836,16 +836,6 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    # 测试下载器
-    # downloader = GoogleMapDownloader(
-    #     level=10,
-    #     LT_lat=36.1610,
-    #     LT_lon=103.5533,
-    #     RB_lat=36.0203,
-    #     RB_lon=103.9557,
-    #     root_dir="D:\\satellite\\",
-    #     max_workers=20
-    # )
 
 
     # 连接信号到控制台输出
