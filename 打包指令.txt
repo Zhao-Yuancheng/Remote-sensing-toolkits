@@ -1,0 +1,17 @@
+pyinstaller -D -w -i .\icon\download.ico .\multiDownload\multiDownload.py
+
+pyinstaller -D -w -i .\icon\split.ico .\tileSplit\tileSplit.py
+
+pyinstaller -D -w -i .\icon\combine.ico .\tileCombine\tileCombine.py
+
+pyinstaller -D -w -i .\icon\balance.ico .\colorBalance\colorBalance.py
+
+
+
+pyinstaller -D -i .\icon\cmd.ico .\multiDownload\multiDownloadCLI.py
+
+pyinstaller -D -i .\icon\cmd.ico .\tileSplit\tileSplitCLI.py
+
+pyinstaller -D -i .\icon\cmd.ico .\tileCombine\tileCombineCLI.py  
+
+pyinstaller -D -i .\icon\cmd.ico .\colorBalance\colorBalanceCLI.py
