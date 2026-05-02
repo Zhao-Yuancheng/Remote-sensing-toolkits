@@ -200,8 +200,16 @@ def process_image():
         return
 
     h, w = input_image.shape[:2]
+    try:
+        shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
+    except:
+        temp_root = tk.Toplevel()
+        temp_root.withdraw()  # 隐藏临时窗口
+        messagebox.showwarning("警告", "系统资源不足，任务中止！", parent=temp_root)
+        # 销毁临时窗口
+        temp_root.destroy()
+        return
 
-    shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
     shm_name = shm.name
     original_image = np.ndarray((h, w, 3), dtype=np.uint8, buffer=shm.buf)
     original_image[:] = input_image

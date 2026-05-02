@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import shared_memory
 from multiprocessing import Pool
 from multiprocessing import freeze_support
-import os
+import os,sys
 
 
 def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_name, h, w, channels):
@@ -60,10 +60,14 @@ if __name__ == "__main__":
     c = args.channels
 
     # 根据通道数计算共享内存大小
-    shm = shared_memory.SharedMemory(
-        create=True,
-        size=h * w * c
-    )
+    try:
+        shm = shared_memory.SharedMemory(
+            create=True,
+            size=h * w * c
+        )
+    except:
+        print("系统资源不足，任务中止！")
+        sys.exit()
     shm_name = shm.name
 
     # 根据通道数创建不同形状的数组

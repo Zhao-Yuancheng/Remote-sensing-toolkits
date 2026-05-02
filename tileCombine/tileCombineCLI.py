@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import shared_memory
 from multiprocessing import Pool
 from multiprocessing import freeze_support
-import os
+import os,sys
 
 
 def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, tot_height, shm_name,
@@ -64,10 +64,14 @@ if __name__ == "__main__":
     channels = args.channels
 
     # 根据通道数计算共享内存大小
-    shm = shared_memory.SharedMemory(
-        create=True,
-        size=x_num * y_num * args.seg_width * args.seg_height * channels
-    )
+    try:
+        shm = shared_memory.SharedMemory(
+            create=True,
+            size=x_num * y_num * args.seg_width * args.seg_height * channels
+        )
+    except:
+        print("系统资源不足，任务中止！")
+        sys.exit()
     shm_name = shm.name
     tot_width, tot_height = x_num * args.seg_width, y_num * args.seg_height
 

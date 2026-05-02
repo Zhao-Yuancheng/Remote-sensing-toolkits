@@ -275,7 +275,11 @@ def process_image():
         return
 
     h, w = input_image.shape[:2]
-    shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
+    try:
+        shm = shared_memory.SharedMemory(create=True, size=h * w * 3)
+    except:
+        print("系统资源不足，任务中止！")
+        return
     shm_name = shm.name
     original_image = np.ndarray((h, w, 3), dtype=np.uint8, buffer=shm.buf)
     original_image[:] = input_image
