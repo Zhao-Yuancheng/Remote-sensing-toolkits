@@ -1,0 +1,44 @@
+# cython: language_level=3
+# cython: boundscheck=False
+# cython: wraparound=False
+# cython: initializedcheck=False
+# cython: nonecheck=False
+# cython: cdivision=True
+
+import numpy as np
+cimport numpy as np
+from cython.parallel import prange
+
+# 定义NumPy类型
+DTYPE_U8 = np.uint8
+ctypedef np.uint8_t DTYPE_U8_t
+
+def process_palette_block(
+        np.ndarray[DTYPE_U8_t, ndim=2] input_array,
+        np.ndarray[DTYPE_U8_t, ndim=3] output_array,
+        np.ndarray[DTYPE_U8_t, ndim=2] palette_lut,
+        int start_row,
+        int end_row
+):
+    """
+    处理图像块的Cython函数
+
+    参数:
+        input_array: 输入数组 (H, W)
+        output_array: 输出数组 (3, H, W)
+        palette_lut: 调色板查找表 (256, 3)
+        start_row: 起始行
+        end_row: 结束行
+    """
+    cdef:
+        int height = end_row - start_row
+        int width = input_array.shape[1]
+        int y, x, idx
+
+    # 并行处理行
+    for y in prange(height, nogil=True, schedule='static'):
+        for x in range(width):
+            idx = input_array[start_row + y, x]
+            output_array[0, start_row + y, x] = palette_lut[idx, 0]
+            output_array[1, start_row + y, x] = palette_lut[idx, 1]
+            output_array[2, start_row + y, x] = palette_lut[idx, 2]
