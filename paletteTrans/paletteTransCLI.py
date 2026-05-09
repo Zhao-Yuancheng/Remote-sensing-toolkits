@@ -187,21 +187,22 @@ def worker_process_cy(
 
 def convert_palette_geotiff(
         input_path: str,
-        output_path: str = None
+        output_path: str,
+        nproc: int
 ) -> None:
     """
     主函数：转换调色板TIFF为RGB
     """
-    if output_path is None:
-        base, ext = os.path.splitext(input_path)
-        output_path = f"{base}_rgb{ext}"
+    # if output_path is None:
+    #     base, ext = os.path.splitext(input_path)
+    #     output_path = f"{base}_rgb{ext}"
 
     # 确定工作进程数
-    n_workers = max(1, mp.cpu_count() // 2)
+    # nproc = max(1, mp.cpu_count() // 2)
 
     print(f"输入文件: {input_path}")
     print(f"输出文件: {output_path}")
-    print(f"工作进程数: {n_workers}")
+    print(f"工作进程数: {nproc}")
     print(f"使用Cython: {process_palette_block is not None}")
 
     # 1. 创建共享内存
@@ -213,7 +214,7 @@ def convert_palette_geotiff(
     total_rows = input_shape[0]
 
     # 2. 分块
-    blocks = divide_rows(total_rows, n_workers)
+    blocks = divide_rows(total_rows, nproc)
     print(f"图像尺寸: {input_shape}")
 
     # 3. 准备进程参数
@@ -234,7 +235,7 @@ def convert_palette_geotiff(
     print("启动进程池...")
     start_time = time.time()
 
-    with mp.Pool(processes=n_workers) as pool:
+    with mp.Pool(processes=nproc) as pool:
         if process_palette_block is not None:
             results = pool.starmap(worker_process_cy, args_list)
         else:
@@ -275,10 +276,10 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='转换调色板TIFF为RGB')
-    parser.add_argument('--file_path', help='输入TIFF文件')
-    parser.add_argument('--result_path', help='输出TIFF文件')
+    parser.add_argument('--file_path', help='输入TIFF文件',required=True,type=str)
+    parser.add_argument('--result_path', help='输出TIFF文件',required=True,type=str)
+    parser.add_argument('--proc_num', help='并发进程数',default = max(1,mp.cpu_count() // 2),type=int)
 
     args = parser.parse_args()
 
-    convert_palette_geotiff(args.file_path, args.result_path)
-    # convert_palette_geotiff("ptest.tif", "new.tif")
+    convert_palette_geotiff(args.file_path, args.result_path, args.proc_num)
