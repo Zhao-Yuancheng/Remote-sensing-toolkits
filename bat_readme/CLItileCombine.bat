@@ -9,6 +9,6 @@ _CLItileCombine.exe ^
 --y_step 4 ^
 --seg_width 1024 ^
 --seg_height 1024 ^
---proc_hum 8
+--proc_num 8
 
 pause

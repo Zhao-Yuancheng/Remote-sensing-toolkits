@@ -40,7 +40,7 @@ def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, to
 
 
 if __name__ == "__main__":
-    Image.MAX_IMAGE_PIXELS = 1e15
+    Image.MAX_IMAGE_PIXELS = None
     freeze_support()
 
     parser = argparse.ArgumentParser()

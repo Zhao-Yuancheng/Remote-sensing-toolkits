@@ -466,7 +466,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
 if __name__ == '__main__':
-    Image.MAX_IMAGE_PIXELS = 1e15  # 设置PIL最大像素限制
+    Image.MAX_IMAGE_PIXELS = None  # 设置PIL最大像素限制
     freeze_support()
 
     app = QtWidgets.QApplication(sys.argv)

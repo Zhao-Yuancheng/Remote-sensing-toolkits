@@ -32,7 +32,7 @@ def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_n
 
 
 if __name__ == "__main__":
-    Image.MAX_IMAGE_PIXELS = 1e15
+    Image.MAX_IMAGE_PIXELS = None
     freeze_support()
 
     parser = argparse.ArgumentParser()

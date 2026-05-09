@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-TIFF调色板转RGB - 多进程优化版（使用PIL）
+GeoTIFF调色板转RGB - 多进程Cython优化版
 """
 
 import multiprocessing as mp
@@ -11,7 +11,7 @@ from multiprocessing import shared_memory, freeze_support
 from typing import Tuple, List
 
 import numpy as np
-from PIL import Image
+from osgeo import gdal
 
 # 添加Cython模块路径
 sys.path.append('.')
@@ -20,6 +20,7 @@ try:
 except ImportError:
     print("警告: 未找到Cython模块，将使用Python版本")
     process_palette_block = None
+
 
 
 def create_shared_memory_blocks(
@@ -36,31 +37,26 @@ np.ndarray, Tuple[int, int, int], dict]:
         output_shape: 输出形状 (3, H, W)
         metadata: 元数据
     """
-    # 使用PIL打开图像
-    image = Image.open(input_path)
+    dataset = gdal.Open(input_path)
+    if dataset is None:
+        raise ValueError(f"无法打开文件: {input_path}")
 
-    # 检查是否为调色板图像
-    if image.mode != 'P':
-        raise ValueError("输入文件不是调色板图像 (P mode)")
+    band = dataset.GetRasterBand(1)
+    color_table = band.GetColorTable()
+    if color_table is None:
+        raise ValueError("输入文件没有调色板")
 
     # 读取数据
-    data = np.array(image)
+    data = band.ReadAsArray()
     input_shape = data.shape
     input_dtype = data.dtype
 
-    # 获取调色板
-    palette = image.getpalette()
-    if palette is None:
-        raise ValueError("输入文件没有调色板")
-
     # 创建调色板查找表
     palette_lut = np.zeros((256, 3), dtype=np.uint8)
-
-    # PIL的调色板是长度为768的列表 [R0, G0, B0, R1, G1, B1, ...]
     for i in range(256):
-        idx = i * 3
-        if idx + 2 < len(palette):
-            palette_lut[i] = [palette[idx], palette[idx + 1], palette[idx + 2]]
+        color = color_table.GetColorEntry(i)
+        if color:
+            palette_lut[i] = [color[0], color[1], color[2]]
 
     # 计算输出形状
     output_shape = (3, input_shape[0], input_shape[1])
@@ -85,11 +81,13 @@ np.ndarray, Tuple[int, int, int], dict]:
 
     # 保存元数据
     metadata = {
+        'transform': dataset.GetGeoTransform(),
+        'projection': dataset.GetProjection(),
         'input_shape': input_shape,
         'output_shape': output_shape
     }
 
-    image.close()
+    dataset = None
     return shm_input, shm_output, palette_lut, output_shape, metadata
 
 
@@ -190,7 +188,7 @@ def convert_palette_geotiff(
         output_path: str = None
 ) -> None:
     """
-    主函数：转换调色板TIFF为RGB
+    主函数：转换调色板GeoTIFF为RGB
     """
     if output_path is None:
         base, ext = os.path.splitext(input_path)
@@ -250,15 +248,26 @@ def convert_palette_geotiff(
         buffer=shm_output.buf
     ).copy()
 
-    # 6. 使用PIL保存结果
+    # 6. 保存结果
     print("保存结果...")
+    driver = gdal.GetDriverByName('GTiff')
+    dataset = driver.Create(
+        output_path,
+        input_shape[1],  # 宽度
+        input_shape[0],  # 高度
+        3,  # 波段数
+        gdal.GDT_Byte
+    )
 
-    # 将(3, H, W)转换为(H, W, 3)
-    rgb_array = np.transpose(output_array, (1, 2, 0))
+    dataset.SetGeoTransform(metadata['transform'])
+    dataset.SetProjection(metadata['projection'])
 
-    # 创建PIL图像并保存
-    rgb_image = Image.fromarray(rgb_array, mode='RGB')
-    rgb_image.save(output_path)
+    for i in range(3):
+        band = dataset.GetRasterBand(i + 1)
+        band.WriteArray(output_array[i])
+        band.FlushCache()
+
+    dataset = None
 
     # 7. 清理共享内存
     shm_input.close()
@@ -270,13 +279,13 @@ def convert_palette_geotiff(
 
 
 if __name__ == "__main__":
-    Image.MAX_IMAGE_PIXELS = None
     freeze_support()
+    gdal.UseExceptions()
     import argparse
 
-    parser = argparse.ArgumentParser(description='转换调色板TIFF为RGB')
-    parser.add_argument('--file_path', help='输入TIFF文件')
-    parser.add_argument('--result_path', help='输出TIFF文件')
+    parser = argparse.ArgumentParser(description='转换调色板GeoTIFF为RGB')
+    parser.add_argument('--file_path', help='输入GeoTIFF文件')
+    parser.add_argument('--result_path', help='输出GeoTIFF文件')
 
     args = parser.parse_args()
 
