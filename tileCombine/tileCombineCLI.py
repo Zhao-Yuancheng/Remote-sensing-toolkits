@@ -208,10 +208,8 @@ if __name__ == "__main__":
 
     # 初始化共享内存
     print("初始化共享内存...")
-    if channels == 1:
-        totMap.fill(0)
-    else:
-        totMap.fill(0)
+
+    totMap.fill(0)
 
     # 准备任务参数
     params = []

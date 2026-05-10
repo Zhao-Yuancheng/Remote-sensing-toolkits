@@ -265,10 +265,11 @@ def process_image():
         print("未提供路径，操作取消。")
         return
 
-    # ... (图片读取、shared_memory 等处理逻辑完全不变) ...
     try:
         input_image = skimage.io.imread(INPUT_FILE_PATH)
-        if input_image.shape[2] == 4:
+        if len(input_image.shape)==2:
+            print("错误：该图片通道数为1，非RGB模式。请检查是否为灰度L或调色板P模式。")
+        elif input_image.shape[2] == 4:
             input_image = rgba2rgb(input_image) * 255
     except Exception as e:
         print(f"错误: 无法读取图片: {str(e)}")

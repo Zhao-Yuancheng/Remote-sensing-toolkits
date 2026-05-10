@@ -192,7 +192,14 @@ def process_image():
 
     try:
         input_image = skimage.io.imread(INPUT_FILE_PATH)
-        if input_image.shape[2] == 4:
+        if len(input_image.shape)==2:
+            temp_root = tk.Toplevel()
+            temp_root.withdraw()
+            messagebox.showerror("错误","该图片通道数为1，非RGB模式。请检查是否为灰度L或调色板P模式。",parent = temp_root)
+            temp_root.destroy()
+            return
+
+        elif input_image.shape[2] == 4:
             input_image = rgba2rgb(input_image) * 255
 
     except Exception as e:

@@ -340,6 +340,14 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.processBtn.setText("开始处理")
                 return
 
+            if channels == 1:
+                reply = QtWidgets.QMessageBox.question(self,"警告","该图像通道数为1，请检查是否为灰度L或调色板P模式。\n是否继续？",
+                                                       QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+                if reply == QtWidgets.QMessageBox.No:
+                    self.processBtn.setEnabled(True)
+                    self.processBtn.setText("开始处理")
+                    return
+
             # 根据通道数计算共享内存大小
             shm = shared_memory.SharedMemory(
                 create=True,
