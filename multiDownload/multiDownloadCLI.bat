@@ -1,10 +1,10 @@
-CALL conda activate your_environment_name
+CALL conda activate rstDev
 
 python multiDownloadCLI.py ^
 --root_dir ".\satellite" ^
 --source 2 ^
---level_start 13 ^
---level_end 16 ^
+--level_start 14 ^
+--level_end 15 ^
 --LT_lat 36.161000 ^
 --LT_lon 103.553300 ^
 --RB_lat 36.020300 ^

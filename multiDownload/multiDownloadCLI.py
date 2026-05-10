@@ -8,34 +8,71 @@ import time
 import urllib.request
 from typing import List, Tuple
 from urllib.error import URLError, HTTPError
+from tqdm import tqdm
 
+# 数据源定义
 source_dict = {
-    0: "Google Earth",
-    1: "高德矢量底图",
-    2: "高德卫星影像",
-    3: "高德路网标记",
+    0: "Google Earth 卫星影像",
+    1: "高德地图 矢量底图",
+    2: "高德地图 卫星影像",
+    3: "高德地图 路网标记",
 }
 
 
 # 线程安全的计数器
 class ThreadSafeCounter:
+    """线程安全的计数器，用于统计下载进度"""
+
     def __init__(self):
         self.value = 0
         self.lock = threading.Lock()
 
-    def increment(self):
+    def increment(self, amount: int = 1) -> int:
+        """增加计数值，返回增加后的值"""
         with self.lock:
-            self.value += 1
+            self.value += amount
             return self.value
 
-    def get(self):
+    def get(self) -> int:
+        """获取当前计数值"""
         with self.lock:
             return self.value
 
+    def set(self, value: int) -> None:
+        """设置计数值"""
+        with self.lock:
+            self.value = value
 
-# 全局下载计数器
-total_downloads = ThreadSafeCounter()
-total_errors = ThreadSafeCounter()
+
+# 全局统计器
+class DownloadStats:
+    """下载统计信息"""
+
+    def __init__(self):
+        self.total_tasks = ThreadSafeCounter()  # 总任务数
+        self.completed_tasks = ThreadSafeCounter()  # 已完成任务数
+        self.successful_tasks = ThreadSafeCounter()  # 成功任务数
+        self.failed_tasks = ThreadSafeCounter()  # 失败任务数
+
+    def reset(self, total: int = 0) -> None:
+        """重置统计器"""
+        self.total_tasks.set(total)
+        self.completed_tasks.set(0)
+        self.successful_tasks.set(0)
+        self.failed_tasks.set(0)
+
+    def get_progress(self) -> Tuple[int, int, int, int]:
+        """获取进度信息：已完成数，成功数，失败数，总数"""
+        return (
+            self.completed_tasks.get(),
+            self.successful_tasks.get(),
+            self.failed_tasks.get(),
+            self.total_tasks.get()
+        )
+
+
+# 全局下载统计
+download_stats = DownloadStats()
 
 # User-Agent列表
 agents = [
@@ -50,12 +87,18 @@ agents = [
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/13.0.782.24 Safari/535.1'
 ]
 
-# 创建线程本地存储
-thread_local = threading.local()
-
 
 # 经纬度反算切片行列号 3857坐标系
-def deg2num(lat_deg, lon_deg, zoom):
+def deg2num(lat_deg: float, lon_deg: float, zoom: int) -> Tuple[int, int]:
+    """
+    将经纬度转换为瓦片行列号
+    参数:
+        lat_deg: 纬度
+        lon_deg: 经度
+        zoom: 缩放级别
+    返回:
+        (x, y) 瓦片行列号
+    """
     lat_rad = math.radians(lat_deg)
     n = 2.0 ** zoom
     xtile = int((lon_deg + 180.0) / 360.0 * n)
@@ -63,15 +106,20 @@ def deg2num(lat_deg, lon_deg, zoom):
     return (xtile, ytile)
 
 
-# 下载单个图片（优化后的版本，无递归）
+# 下载单个图片
 def download_single_image(Tpath: str, Spath: str, x: int, y: int, max_retries: int = 3) -> bool:
     """
     下载单个图片，带重试机制
-    返回: True表示成功，False表示失败
+    参数:
+        Tpath: 瓦片URL
+        Spath: 保存路径
+        x, y: 瓦片坐标
+        max_retries: 最大重试次数
+    返回:
+        True表示成功，False表示失败
     """
     # 如果文件已存在，跳过下载
     if os.path.isfile(Spath):
-        print(f"文件已存在，跳过: {x}_{y}")
         return True
 
     # 创建目录（如果不存在）
@@ -84,34 +132,21 @@ def download_single_image(Tpath: str, Spath: str, x: int, y: int, max_retries: i
 
             # 设置超时
             response = urllib.request.urlopen(req, timeout=30)
-
-            # 读取数据
             data = response.read()
 
             # 写入文件
             with open(Spath, 'wb') as f:
                 f.write(data)
 
-            # 更新计数器
-            downloaded = total_downloads.increment()
-            if downloaded % 100 == 0:
-                print(f"已下载 {downloaded} 个文件")
-
-            # print(f"下载成功: {x}_{y} (第{retry + 1}次尝试)")
             return True
 
         except (URLError, HTTPError, ConnectionError, TimeoutError) as e:
             if retry < max_retries - 1:
                 wait_time = 2 ** retry  # 指数退避
-                print(f"下载失败 {x}_{y}, 第{retry + 1}次重试，等待{wait_time}秒: {e}")
                 time.sleep(wait_time)
             else:
-                print(f"下载失败 {x}_{y}，重试{max_retries}次后放弃")
-                total_errors.increment()
                 return False
         except Exception as e:
-            print(f"未知错误 {x}_{y}: {e}")
-            total_errors.increment()
             return False
 
     return False
@@ -125,6 +160,14 @@ def download_task_wrapper(args: Tuple[str, str, int, int]) -> Tuple[int, int, bo
     """
     Tpath, Spath, x, y = args
     success = download_single_image(Tpath, Spath, x, y)
+
+    # 更新统计信息
+    download_stats.completed_tasks.increment(1)
+    if success:
+        download_stats.successful_tasks.increment(1)
+    else:
+        download_stats.failed_tasks.increment(1)
+
     return x, y, success
 
 
@@ -132,7 +175,15 @@ def download_task_wrapper(args: Tuple[str, str, int, int]) -> Tuple[int, int, bo
 def parallel_download(tasks: List[Tuple[str, str, int, int]], max_workers: int = 100) -> dict:
     """
     并行下载多个图片
+    参数:
+        tasks: 下载任务列表
+        max_workers: 最大工作线程数
+    返回:
+        下载结果字典
     """
+    # 重置统计器
+    download_stats.reset(len(tasks))
+
     results = {
         'total': len(tasks),
         'success': 0,
@@ -140,75 +191,96 @@ def parallel_download(tasks: List[Tuple[str, str, int, int]], max_workers: int =
         'errors': []
     }
 
-    print(f"开始下载 {len(tasks)} 个文件，使用 {max_workers} 个线程...")
+    print(f"\n开始并行下载 {len(tasks)} 个瓦片，使用 {max_workers} 个工作线程...")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # 提交所有任务
-        future_to_task = {
-            executor.submit(download_task_wrapper, task): task
-            for task in tasks
-        }
+    # 创建进度条
+    with tqdm(total=len(tasks), desc="下载进度", ncols=100,
+              bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
 
-        # 处理完成的任务
-        for future in concurrent.futures.as_completed(future_to_task):
-            task = future_to_task[future]
-            Tpath, Spath, x, y = task
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 提交所有任务
+            future_to_task = {
+                executor.submit(download_task_wrapper, task): task
+                for task in tasks
+            }
 
-            try:
-                x_result, y_result, success = future.result()
-                if success:
-                    results['success'] += 1
-                else:
+            # 处理完成的任务
+            for future in concurrent.futures.as_completed(future_to_task):
+                task = future_to_task[future]
+                Tpath, Spath, x, y = task
+
+                try:
+                    x_result, y_result, success = future.result(timeout=60)
+                    if success:
+                        results['success'] += 1
+                    else:
+                        results['failed'] += 1
+                        results['errors'].append(f"瓦片({x},{y})下载失败")
+                except concurrent.futures.TimeoutError:
                     results['failed'] += 1
-                    results['errors'].append(f"下载失败: {x}_{y}")
-            except Exception as e:
-                results['failed'] += 1
-                error_msg = f"任务执行异常: {x}_{y}, 错误: {str(e)}"
-                results['errors'].append(error_msg)
-                print(error_msg)
+                    error_msg = f"瓦片({x},{y})任务超时"
+                    results['errors'].append(error_msg)
+                except Exception as e:
+                    results['failed'] += 1
+                    error_msg = f"瓦片({x},{y})任务异常: {str(e)}"
+                    results['errors'].append(error_msg)
+
+                # 更新进度条
+                pbar.update(1)
+                completed, success_cnt, failed_cnt, total = download_stats.get_progress()
+                pbar.set_postfix_str(f"成功: {success_cnt}, 失败: {failed_cnt}")
 
     return results
 
 
-# 主下载函数（并行版本）
-def download(k, rootDir, source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 100):
+# 主下载函数
+def download(zoom: int, root_dir: str, source: int,
+             LT_lat: float, LT_lon: float, RB_lat: float, RB_lon: float,
+             max_workers: int = 100) -> dict:
     """
-    并行下载指定区域和缩放级别的切片
+    下载指定区域和缩放级别的切片
+    参数:
+        zoom: 缩放级别
+        root_dir: 保存根目录
+        source: 数据源类型
+        LT_lat, LT_lon: 左上角经纬度
+        RB_lat, RB_lon: 右下角经纬度
+        max_workers: 最大工作线程数
+    返回:
+        下载结果字典
     """
-    zoom = k
-    lefttop = deg2num(LTlat, LTlon, zoom)
-    rightbottom = deg2num(RBlat, RBlon, zoom)
+    # 计算瓦片范围
+    lefttop = deg2num(LT_lat, LT_lon, zoom)
+    rightbottom = deg2num(RB_lat, RB_lon, zoom)
 
+    print(f"\n{'=' * 60}")
     print(f"缩放级别: {zoom}")
-    print(f"X范围: {lefttop[0]} 到 {rightbottom[0]}")
-    print(f"Y范围: {lefttop[1]} 到 {rightbottom[1]}")
-    print(f"X方向切片数: {rightbottom[0] - lefttop[0]}")
-    print(f"Y方向切片数: {rightbottom[1] - lefttop[1]}")
+    print(f"数据源: {source_dict.get(source, '未知')}")
+    print(f"瓦片范围: X[{lefttop[0]} → {rightbottom[0]}] Y[{lefttop[1]} → {rightbottom[1]}]")
+    print(f"瓦片数量: {(rightbottom[0] - lefttop[0]) * (rightbottom[1] - lefttop[1])}")
+    print(f"{'=' * 60}")
 
     # 准备所有下载任务
     tasks = []
-
     for x in range(lefttop[0], rightbottom[0]):
-        path = os.path.join(rootDir, str(zoom), str(x))
+        path = os.path.join(root_dir, str(zoom), str(x))
 
         for y in range(lefttop[1], rightbottom[1]):
+            # 根据数据源生成URL
             if source == 0:
                 tilepath = f"https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={zoom}"
             elif source == 1:
-                tilepath = f"https://webrd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={zoom}"  # 高德矢量底图
+                tilepath = f"https://webrd04.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={zoom}"
             elif source == 2:
-                tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={zoom}"  # 高德卫星影像
+                tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={zoom}"
             elif source == 3:
-                tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={zoom}"  # 高德路网标记
+                tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={zoom}"
             else:
-                print("您输入的source代码有误！")
-                return
+                print(f"错误: 不支持的数据源代码 {source}")
+                return {'total': 0, 'success': 0, 'failed': 0, 'errors': []}
 
             filepath = os.path.join(path, f"{y}.png")
-
             tasks.append((tilepath, filepath, x, y))
-
-    print(f"总共 {len(tasks)} 个切片需要下载")
 
     # 并行下载
     start_time = time.time()
@@ -216,20 +288,22 @@ def download(k, rootDir, source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 
     end_time = time.time()
 
     # 打印统计信息
-    print("\n" + "=" * 50)
-    print("下载完成!")
-    print(f"总耗时: {end_time - start_time:.2f} 秒")
-    print(f"总任务数: {results['total']}")
-    print(f"成功: {results['success']}")
-    print(f"失败: {results['failed']}")
+    elapsed_time = end_time - start_time
+    print(f"\n下载完成! 耗时: {elapsed_time:.2f}秒")
+    print(f"平均速度: {results['success'] / elapsed_time:.2f} 瓦片/秒")
 
     if results['errors']:
-        print(f"\n前10个错误:")
-        for error in results['errors'][:10]:
-            print(f"  - {error}")
+        print(f"\n错误统计: 共 {len(results['errors'])} 个失败任务")
+        if len(results['errors']) <= 10:
+            for error in results['errors']:
+                print(f"  - {error}")
+        else:
+            print(f"  (显示前10个错误)")
+            for error in results['errors'][:10]:
+                print(f"  - {error}")
 
         # 保存错误日志
-        error_file = f"download_errors_zoom{zoom}.txt"
+        error_file = os.path.join(root_dir, f"errors_zoom{zoom}.log")
         with open(error_file, 'w', encoding='utf-8') as f:
             for error in results['errors']:
                 f.write(error + "\n")
@@ -239,14 +313,27 @@ def download(k, rootDir, source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 
 
 
 # 批量下载多个缩放级别
-def batch_download(root_dir, source, level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
-                   max_workers_per_level=50):
-    for zoom in range(level_start, level_end + 1):
-        print(f"\n{'=' * 60}")
-        print(f"开始下载缩放级别: {zoom}")
-        print(f"{'=' * 60}")
+def batch_download(root_dir: str, source: int, level_start: int, level_end: int,
+                   LT_lat: float, LT_lon: float, RB_lat: float, RB_lon: float,
+                   max_workers_per_level: int = 50) -> None:
+    """
+    批量下载多个缩放级别
+    """
+    print(f"\n{'#' * 60}")
+    print("批量下载任务开始")
+    print(f"数据源: {source_dict.get(source, '未知')}")
+    print(f"级别范围: {level_start} → {level_end}")
+    print(f"区域: 左上({LT_lat}, {LT_lon}) 右下({RB_lat}, {RB_lon})")
+    print(f"保存目录: {root_dir}")
+    print(f"{'#' * 60}\n")
 
-        # 动态调整线程数，高级别使用较少线程
+    total_success = 0
+    total_failed = 0
+
+    for zoom in range(level_start, level_end + 1):
+        print(f"\n▶ 正在处理级别 {zoom}...")
+
+        # 动态调整线程数
         if zoom <= 15:
             workers = max_workers_per_level
         elif zoom <= 18:
@@ -254,84 +341,106 @@ def batch_download(root_dir, source, level_start, level_end, LT_lat, LT_lon, RB_
         else:
             workers = max_workers_per_level // 4
 
-        print(f"使用 {workers} 个线程")
-
-        LT_lat_current, LT_lon_current, RB_lat_current, RB_lon_current = LT_lat, LT_lon, RB_lat, RB_lon
-
-        print(f"下载区域:")
-        print(f"  左上: ({LT_lat_current}, {LT_lon_current})")
-        print(f"  右下: ({RB_lat_current}, {RB_lon_current})")
-
+        # 执行下载
         results = download(
-            zoom,
-            root_dir,
-            source,
-            LT_lat_current, LT_lon_current,
-            RB_lat_current, RB_lon_current,
+            zoom, root_dir, source,
+            LT_lat, LT_lon, RB_lat, RB_lon,
             workers
         )
 
-        if results['failed'] > results['total'] * 0.1:  # 失败率超过10%
-            print("错误率较高，暂停30秒...")
-            time.sleep(30)
+        total_success += results['success']
+        total_failed += results['failed']
 
-        # 级别间暂停，避免请求过于频繁
+        # 如果错误率过高，暂停一下
+        if results.get('failed', 0) > results.get('total', 1) * 0.2:  # 失败率超过20%
+            print("⚠ 错误率较高，暂停10秒...")
+            time.sleep(10)
+
+        # 级别间暂停
         if zoom < level_end:
-            print(f"等待5秒后开始下一级别...")
-            time.sleep(5)
+            print("等待3秒后开始下一级别...")
+            time.sleep(3)
+
+    # 最终统计
+    print(f"\n{'#' * 60}")
+    print("批量下载任务完成!")
+    print(f"总成功: {total_success}")
+    print(f"总失败: {total_failed}")
+    print(f"成功率: {total_success / (total_success + total_failed) * 100:.1f}%")
+    print(f"{'#' * 60}")
 
 
 # 主程序入口
 if __name__ == "__main__":
-    # 参数设置
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir', type=str, required=True)
-    parser.add_argument('--source', type=int,
-                        help="请输入数字\n0: Google Earth\n1: 高德矢量底图\n2: 高德卫星影像\n3: 高德路网标记",
-                        required=True)
-    parser.add_argument('--level_start', type=int, required=True)
-    parser.add_argument('--level_end', type=int, required=True)
-    parser.add_argument('--LT_lat', type=float, required=True)
-    parser.add_argument('--LT_lon', type=float, required=True)
-    parser.add_argument('--RB_lat', type=float, required=True)
-    parser.add_argument('--RB_lon', type=float, required=True)
-    parser.add_argument('--workers_num', type=int, required=True)
-    args = parser.parse_known_args()[0]
+    parser = argparse.ArgumentParser(
+        description="多线程地图瓦片下载器 - 支持Google Earth、高德地图等多个数据源",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用示例:
+  python multiDownloadCLI.py --root_dir ./tiles --source 0 --level_start 10 --level_end 12 \\
+    --LT_lat 36.1610 --LT_lon 103.5533 --RB_lat 36.0203 --RB_lon 103.9557 --workers_num 50
 
-    root_dir = args.root_dir
-    source = args.source
-    level_start = args.level_start
-    level_end = args.level_end
-    LT_lat = args.LT_lat
-    LT_lon = args.LT_lon
-    RB_lat = args.RB_lat
-    RB_lon = args.RB_lon
-    max_workers_per_level = args.workers_num
+数据源说明:
+  0: Google Earth 卫星影像
+  1: 高德地图 矢量底图
+  2: 高德地图 卫星影像
+  3: 高德地图 路网标记
+        """
+    )
 
-    print("多线程地图切片下载器")
-    print(f"下载范围: 级别 {level_start} 到 {level_end}")
-    print(f"区域: 左上({LT_lat}, {LT_lon}) 右下({RB_lat}, {RB_lon})")
+    parser.add_argument('--root_dir', type=str, required=True,
+                        help='瓦片保存的根目录路径')
+    parser.add_argument('--source', type=int, required=True, choices=[0, 1, 2, 3],
+                        help='数据源类型: 0-Google Earth, 1-高德矢量, 2-高德卫星, 3-高德路网')
+    parser.add_argument('--level_start', type=int, required=True,
+                        help='起始缩放级别 (通常1-20)')
+    parser.add_argument('--level_end', type=int, required=True,
+                        help='结束缩放级别 (需大于等于起始级别)')
+    parser.add_argument('--LT_lat', type=float, required=True,
+                        help='左上角纬度 (WGS84坐标系)')
+    parser.add_argument('--LT_lon', type=float, required=True,
+                        help='左上角经度 (WGS84坐标系)')
+    parser.add_argument('--RB_lat', type=float, required=True,
+                        help='右下角纬度 (WGS84坐标系)')
+    parser.add_argument('--RB_lon', type=float, required=True,
+                        help='右下角经度 (WGS84坐标系)')
+    parser.add_argument('--workers_num', type=int, default=50,
+                        help='每个级别的最大工作线程数 (默认: 50)')
 
-    if not os.path.exists(root_dir):
-        os.makedirs(root_dir)
-        print(f"创建主目录: {root_dir}")
+    args = parser.parse_args()
 
-    # 开始批量下载
+    # 参数验证
+    if args.level_start > args.level_end:
+        print("错误: 起始级别不能大于结束级别")
+        exit(1)
+
+    if not os.path.exists(args.root_dir):
+        os.makedirs(args.root_dir)
+        print(f"创建目录: {args.root_dir}")
+
+    # 打印配置信息
+    print("\n" + "=" * 60)
+    print("地图瓦片下载器启动")
+    print(f"数据源: {source_dict.get(args.source, '未知')}")
+    print(f"级别范围: {args.level_start} → {args.level_end}")
+    print(f"下载区域: ({args.LT_lat}, {args.LT_lon}) → ({args.RB_lat}, {args.RB_lon})")
+    print(f"保存位置: {args.root_dir}")
+    print("=" * 60)
+
     try:
-        print(root_dir, source, level_start, level_end, LT_lat)
-        batch_download(root_dir, source, level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
-                       max_workers_per_level=1024)
-
-        # 最终统计
-        print("\n" + "=" * 60)
-        print("所有级别下载完成!")
-        print(f"总下载文件数: {total_downloads.get()}")
-        print(f"总错误数: {total_errors.get()}")
+        # 开始批量下载
+        batch_download(
+            args.root_dir, args.source,
+            args.level_start, args.level_end,
+            args.LT_lat, args.LT_lon,
+            args.RB_lat, args.RB_lon,
+            args.workers_num
+        )
 
     except KeyboardInterrupt:
-        print("\n用户中断下载")
+        print("\n\n下载被用户中断")
     except Exception as e:
-        print(f"下载过程发生错误: {e}")
+        print(f"\n下载过程发生错误: {e}")
         import traceback
 
         traceback.print_exc()
