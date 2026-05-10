@@ -1,14 +1,16 @@
-CALL conda activate your_environment_name
+CALL conda activate rstDev
 
 python tileCombineCLI.py ^
---root_dir "input_tiles_root_path" ^
---result_path "output_file_path" ^
---x_begin 1651817 ^
---x_end 1652613 ^
---x_step 4 ^
---y_begin 822436 ^
---y_end 823328 ^
---y_step 4 ^
---seg_width 1024 ^
---seg_height 1024 ^
---proc_hum 8
+--root_dir "D:\satellite\高德卫星影像\16" ^
+--result_path "D:\satellite\高德卫星影像\integrate.png" ^
+--x_begin 51619 ^
+--x_end 51691 ^
+--x_step 1 ^
+--y_begin 25698 ^
+--y_end 25729 ^
+--y_step 1 ^
+--tile_width 256 ^
+--tile_height 256 ^
+--tile_format ".png" ^
+--tile_channels 3 ^
+--proc_num 8 ^

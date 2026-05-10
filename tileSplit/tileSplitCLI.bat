@@ -1,14 +1,14 @@
-CALL conda activate your_environment_name
+CALL conda activate rstDev
 
 python tileSplitCLI.py ^
---file_path "input_file_path" ^
---result_dir "output_tiles_root_path" ^
---result_format "saving format(eg: .jpg)" ^
+--file_path "D:\satellite\高德卫星影像\integrate.png" ^
+--result_dir "D:\satellite\高德卫星影像\split" ^
+--result_format ".jpg" ^
 --x_begin 0 ^
 --x_step 1 ^
---y_begin 100 ^
---y_step 10 ^
---seg_width 1024 ^
---seg_height 1024 ^
---proc_num 8 ^
---channels 3
+--y_begin 0 ^
+--y_step 1 ^
+--tile_width 1024 ^
+--tile_height 1024 ^
+--tile_channels 3 ^
+--proc_num 8

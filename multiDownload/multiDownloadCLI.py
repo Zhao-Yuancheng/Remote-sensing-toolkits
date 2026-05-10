@@ -1,20 +1,19 @@
-import urllib.request
 import argparse
+import concurrent.futures
+import math
 import os
 import random
-import math
-import sys
-import concurrent.futures
 import threading
+import time
+import urllib.request
 from typing import List, Tuple
 from urllib.error import URLError, HTTPError
-import time
 
-source_dict={
-    0:"Google Earth",
-    1:"高德矢量底图",
-    2:"高德卫星影像",
-    3:"高德路网标记",
+source_dict = {
+    0: "Google Earth",
+    1: "高德矢量底图",
+    2: "高德卫星影像",
+    3: "高德路网标记",
 }
 
 
@@ -172,7 +171,7 @@ def parallel_download(tasks: List[Tuple[str, str, int, int]], max_workers: int =
 
 
 # 主下载函数（并行版本）
-def download(k,rootDir,source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 100):
+def download(k, rootDir, source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 100):
     """
     并行下载指定区域和缩放级别的切片
     """
@@ -188,7 +187,6 @@ def download(k,rootDir,source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 10
 
     # 准备所有下载任务
     tasks = []
-
 
     for x in range(lefttop[0], rightbottom[0]):
         path = os.path.join(rootDir, str(zoom), str(x))
@@ -241,12 +239,8 @@ def download(k,rootDir,source, LTlat, LTlon, RBlat, RBlon, max_workers: int = 10
 
 
 # 批量下载多个缩放级别
-def batch_download(root_dir,source,level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
+def batch_download(root_dir, source, level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
                    max_workers_per_level=50):
-    """
-    批量下载多个缩放级别
-    每个级别使用不同的线程数，高级别使用较少线程
-    """
     for zoom in range(level_start, level_end + 1):
         print(f"\n{'=' * 60}")
         print(f"开始下载缩放级别: {zoom}")
@@ -262,22 +256,12 @@ def batch_download(root_dir,source,level_start, level_end, LT_lat, LT_lon, RB_la
 
         print(f"使用 {workers} 个线程")
 
-        # 计算当前级别的边界
-        # if zoom > 15:
-        #     delta_lat = LT_lat - RB_lat
-        #     delta_lon = RB_lon - LT_lon
-        #     LT_lat_current = LT_lat - delta_lat * 1 / 4
-        #     LT_lon_current = LT_lon + delta_lon * 1 / 4
-        #     RB_lat_current = RB_lat + delta_lat * 1 / 4
-        #     RB_lon_current = RB_lon - delta_lon * 1 / 4
-        # else:
         LT_lat_current, LT_lon_current, RB_lat_current, RB_lon_current = LT_lat, LT_lon, RB_lat, RB_lon
 
         print(f"下载区域:")
         print(f"  左上: ({LT_lat_current}, {LT_lon_current})")
         print(f"  右下: ({RB_lat_current}, {RB_lon_current})")
 
-        # 执行下载
         results = download(
             zoom,
             root_dir,
@@ -287,7 +271,6 @@ def batch_download(root_dir,source,level_start, level_end, LT_lat, LT_lon, RB_la
             workers
         )
 
-        # 如果错误太多，暂停一下
         if results['failed'] > results['total'] * 0.1:  # 失败率超过10%
             print("错误率较高，暂停30秒...")
             time.sleep(30)
@@ -302,17 +285,18 @@ def batch_download(root_dir,source,level_start, level_end, LT_lat, LT_lon, RB_la
 if __name__ == "__main__":
     # 参数设置
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir',type=str)
-    parser.add_argument('--source',type=int,help="请输入数字\n0: Google Earth\n1: 高德矢量底图\n2: 高德卫星影像\n3: 高德路网标记")
-    parser.add_argument('--level_start', type=int)
-    parser.add_argument('--level_end', type=int)
-    parser.add_argument('--LT_lat', type=float)
-    parser.add_argument('--LT_lon', type=float)
-    parser.add_argument('--RB_lat', type=float)
-    parser.add_argument('--RB_lon', type=float)
-    parser.add_argument('--workers_num', type=int)
+    parser.add_argument('--root_dir', type=str, required=True)
+    parser.add_argument('--source', type=int,
+                        help="请输入数字\n0: Google Earth\n1: 高德矢量底图\n2: 高德卫星影像\n3: 高德路网标记",
+                        required=True)
+    parser.add_argument('--level_start', type=int, required=True)
+    parser.add_argument('--level_end', type=int, required=True)
+    parser.add_argument('--LT_lat', type=float, required=True)
+    parser.add_argument('--LT_lon', type=float, required=True)
+    parser.add_argument('--RB_lat', type=float, required=True)
+    parser.add_argument('--RB_lon', type=float, required=True)
+    parser.add_argument('--workers_num', type=int, required=True)
     args = parser.parse_known_args()[0]
-
 
     root_dir = args.root_dir
     source = args.source
@@ -324,11 +308,9 @@ if __name__ == "__main__":
     RB_lon = args.RB_lon
     max_workers_per_level = args.workers_num
 
-
     print("多线程地图切片下载器")
     print(f"下载范围: 级别 {level_start} 到 {level_end}")
     print(f"区域: 左上({LT_lat}, {LT_lon}) 右下({RB_lat}, {RB_lon})")
-    print(f"每个文件约70KB，总文件数取决于缩放级别和区域大小")
 
     if not os.path.exists(root_dir):
         os.makedirs(root_dir)
@@ -336,8 +318,8 @@ if __name__ == "__main__":
 
     # 开始批量下载
     try:
-        print(root_dir,source,level_start,level_end,LT_lat)
-        batch_download(root_dir,source,level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
+        print(root_dir, source, level_start, level_end, LT_lat)
+        batch_download(root_dir, source, level_start, level_end, LT_lat, LT_lon, RB_lat, RB_lon,
                        max_workers_per_level=1024)
 
         # 最终统计

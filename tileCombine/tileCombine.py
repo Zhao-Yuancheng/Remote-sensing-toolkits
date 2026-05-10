@@ -1,4 +1,7 @@
 import sys
+
+from PySide6.QtWidgets import QMessageBox
+
 from ui_tileCombine import Ui_MainWindow
 from PySide6 import QtCore, QtWidgets, QtGui
 from multiprocessing import Pool, shared_memory,freeze_support
@@ -8,7 +11,7 @@ import numpy as np
 
 
 # 瓦片合并函数
-def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, tot_height, shm_name,
+def integrate(idx, x_idx, y_idx, file_path, tile_width, tile_height, tot_width, tot_height, shm_name,
               channels, x_num, y_num, progress_shm_name):
     try:
         existing_shm = shared_memory.SharedMemory(name=shm_name, create=False)
@@ -25,11 +28,11 @@ def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, to
 
         # 放置到正确位置
         if channels == 1:
-            tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-            x_idx * seg_width:(x_idx + 1) * seg_width] = array
+            tot_map[y_idx * tile_height:(y_idx + 1) * tile_height,
+            x_idx * tile_width:(x_idx + 1) * tile_width] = array
         else:  # channels == 3
-            tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-            x_idx * seg_width:(x_idx + 1) * seg_width, :] = array
+            tot_map[y_idx * tile_height:(y_idx + 1) * tile_height,
+            x_idx * tile_width:(x_idx + 1) * tile_width, :] = array
 
         existing_shm.close()
 
@@ -44,7 +47,7 @@ def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, to
         raise
 
 
-def run_tile_combine(params,progress_shm_name, progress_callback=None):
+def run_tile_combine(params,progress_shm_name,tile_ext, progress_callback=None):
     """执行瓦片合并的主要函数"""
     try:
         # 从参数中获取值
@@ -56,8 +59,8 @@ def run_tile_combine(params,progress_shm_name, progress_callback=None):
         y_begin = params['y_begin']
         y_end = params['y_end']
         y_step = params['y_step']
-        seg_width = params['seg_width']
-        seg_height = params['seg_height']
+        tile_width = params['tile_width']
+        tile_height = params['tile_height']
         proc_num = params['proc_num']
         channels = params['channels']
 
@@ -67,10 +70,10 @@ def run_tile_combine(params,progress_shm_name, progress_callback=None):
         # 根据通道数计算共享内存大小
         shm = shared_memory.SharedMemory(
             create=True,
-            size=x_num * y_num * seg_width * seg_height * channels
+            size=x_num * y_num * tile_width * tile_height * channels
         )
         shm_name = shm.name
-        tot_width, tot_height = x_num * seg_width, y_num * seg_height
+        tot_width, tot_height = x_num * tile_width, y_num * tile_height
 
         # # PROGRESS 二维进度表示
         # progress_shm = shared_memory.SharedMemory(
@@ -98,9 +101,9 @@ def run_tile_combine(params,progress_shm_name, progress_callback=None):
                     x_idx,
                     y_idx,
                     os.path.join(root_dir, str(x_begin + x_idx * x_step),
-                                 str(y_begin + y_idx * y_step)) + ".png",
-                    seg_width,
-                    seg_height,
+                                 str(y_begin + y_idx * y_step)) + tile_ext,
+                    tile_width,
+                    tile_height,
                     tot_width,
                     tot_height,
                     shm_name,
@@ -143,12 +146,13 @@ class WorkerThread(QtCore.QThread):
     finished = QtCore.Signal(bool, str)  # 信号：是否成功，消息
     progress_updated = QtCore.Signal(np.ndarray)  # 信号：进度图更新
 
-    def __init__(self, params, progress_shm_name, x_num, y_num):
+    def __init__(self, params, progress_shm_name, x_num, y_num, tile_ext):
         super().__init__()
         self.params = params
         self.progress_shm_name = progress_shm_name
         self.x_num = x_num
         self.y_num = y_num
+        self.tile_ext = tile_ext
         self.running = True
 
     def run(self):
@@ -159,7 +163,7 @@ class WorkerThread(QtCore.QThread):
                                       buffer=progress_shm.buf)
 
             # 运行合并函数
-            success, message = run_tile_combine(self.params,self.progress_shm_name)
+            success, message = run_tile_combine(self.params,self.progress_shm_name,self.tile_ext)
 
             # 发送最终进度
             self.progress_updated.emit(progress_map.copy())
@@ -186,6 +190,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
         self.progress_map = None
         self.x_num = 0
         self.y_num = 0
+        self.tile_ext=None
 
     def setup(self):
         # 连接按钮点击/更改事件
@@ -203,8 +208,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 total = self.x_num * self.y_num
                 progress_percent = int((completed / total) * 100) if total > 0 else 0
 
-                # 创建颜色映射：白色(255)表示未处理，黑色(0)表示已处理
-                # 我们可以将其反转以便更好看：黑色表示未处理，白色表示已处理
+                # 创建颜色映射：白色(255)表示已处理，黑色(0)表示未处理
                 # display_array = 255 - self.progress_map
                 display_array = self.progress_map
 
@@ -213,7 +217,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 # print(height, width)
                 bytes_per_line = width
                 qimage = QtGui.QImage(display_array.data.tobytes(), width, height,
-                                      bytes_per_line, QtGui.QImage.Format_Grayscale8)
+                                      bytes_per_line, QtGui.QImage.Format.Format_Grayscale8)
 
                 # 将QImage转换为QPixmap并显示
                 pixmap = QtGui.QPixmap.fromImage(qimage)
@@ -221,12 +225,12 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 # 缩放以适合label，但保持宽高比
                 scaled_pixmap = pixmap.scaled(
                     self.imageLabel.size(),
-                    QtCore.Qt.KeepAspectRatio,
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                     # QtCore.Qt.SmoothTransformation
                 )
 
                 self.imageLabel.setPixmap(scaled_pixmap)
-                self.imageLabel.setAlignment(QtCore.Qt.AlignCenter)
+                self.imageLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
 
                 # 在状态栏显示进度
                 if progress_percent == 100:
@@ -256,6 +260,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                            if i.endswith((".jpg", ".png", ".gif",".jpeg", ".tif",".tiff",".bmp",".webp"))
                            and os.path.isfile(os.path.join(dir_path,x_dir_list[0],i))
                            and os.path.splitext(i)[0].isdigit()]
+            self.tile_ext = os.path.splitext(y0_file_list[0])[1]
             num_x_dir_list = [int(i) for i in x_dir_list]
             self.xStartEdit.setText(str(min(num_x_dir_list)))
             self.xEndEdit.setText(str(max(num_x_dir_list)))
@@ -277,7 +282,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
     def browse_save_file(self):
         """浏览保存文件"""
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "选择保存文件", "", "PNG Files (*.png);;All Files (*)"
+            self, "选择保存文件", "", "PNG Files (*.png);;TIFF Files (*.tif);;JPEG Files (*.jpg);;All Files (*)"
         )
         if file_path:
             self.saveFileEdit.setText(file_path)
@@ -321,8 +326,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             y_step = int(self.yStepEdit.text())
 
             # 瓦片属性
-            seg_width = int(self.tileWidthLineEdit.text())
-            seg_height = int(self.tileLengthLineEdit.text())
+            tile_width = int(self.tileWidthLineEdit.text())
+            tile_height = int(self.tileLengthLineEdit.text())
             channels = int(self.tileChannelsLineEdit.text())
 
             # 进程数
@@ -354,7 +359,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.processBtn.setText("开始处理")
                 return
 
-            if seg_width <= 0 or seg_height <= 0:
+            if tile_width <= 0 or tile_height <= 0:
                 QtWidgets.QMessageBox.warning(self, "警告", "瓦片尺寸必须大于0！")
                 self.processBtn.setEnabled(True)
                 self.processBtn.setText("开始处理")
@@ -394,8 +399,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 'y_begin': y_begin,
                 'y_end': y_end,
                 'y_step': y_step,
-                'seg_width': seg_width,
-                'seg_height': seg_height,
+                'tile_width': tile_width,
+                'tile_height': tile_height,
                 'proc_num': proc_num,
                 'channels': channels
             }
@@ -403,8 +408,11 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             # 在状态栏显示处理状态
             self.statusbar.showMessage("开始处理瓦片图合并...")
 
+            # if self.tile_ext==None:
+            #     self.tile_ext=".png"
+
             # 创建工作线程并启动
-            self.worker = WorkerThread(params, self.progress_shm_name, x_num, y_num)
+            self.worker = WorkerThread(params, self.progress_shm_name, x_num, y_num, self.tile_ext)
             self.worker.finished.connect(self.on_process_finished)
             self.worker.progress_updated.connect(self.on_progress_updated)
             self.worker.start()
@@ -458,7 +466,23 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
         self.processBtn.setText("开始处理")
 
         if success:
-            QtWidgets.QMessageBox.information(self, "成功", message)
+            # QtWidgets.QMessageBox.information(self, "成功", message)
+
+            reply = QMessageBox.question(
+                self,
+                "成功",
+                message+"\n是否打开输出文件所在目录？",
+                QMessageBox.Yes|QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                output_dir = os.path.dirname(self.saveFileEdit.text())
+                if os.path.exists(output_dir):
+                    if sys.platform == "win32":
+                        os.startfile(output_dir)
+                    elif sys.platform == "darwin":
+                        os.system(f'open "{output_dir}"')
+                    else:
+                        os.system(f'xdg-open "{output_dir}"')
             self.statusbar.showMessage("处理完成！", 5000)
         else:
             QtWidgets.QMessageBox.critical(self, "错误", message)
@@ -470,5 +494,8 @@ if __name__ == '__main__':
     freeze_support()
 
     app = QtWidgets.QApplication(sys.argv)
+    app.styleHints().setColorScheme(QtCore.Qt.ColorScheme.Light)
+    app.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
+
     window = MyApp()
     sys.exit(app.exec())

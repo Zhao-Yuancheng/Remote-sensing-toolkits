@@ -7,7 +7,7 @@ from multiprocessing import freeze_support
 import os,sys
 
 
-def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, tot_height, shm_name,
+def integrate(idx, x_idx, y_idx, file_path, tile_width, tile_height, tot_width, tot_height, shm_name,
               channels):
     try:
         existing_shm = shared_memory.SharedMemory(name=shm_name, create=False)
@@ -24,11 +24,11 @@ def integrate(idx, x_idx, y_idx, file_path, seg_width, seg_height, tot_width, to
 
         # 放置到正确位置
         if channels == 1:
-            tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-            x_idx * seg_width:(x_idx + 1) * seg_width] = array
+            tot_map[y_idx * tile_height:(y_idx + 1) * tile_height,
+            x_idx * tile_width:(x_idx + 1) * tile_width] = array
         else:  # channels == 3
-            tot_map[y_idx * seg_height:(y_idx + 1) * seg_height,
-            x_idx * seg_width:(x_idx + 1) * seg_width, :] = array
+            tot_map[y_idx * tile_height:(y_idx + 1) * tile_height,
+            x_idx * tile_width:(x_idx + 1) * tile_width, :] = array
 
         existing_shm.close()
 
@@ -44,36 +44,39 @@ if __name__ == "__main__":
     freeze_support()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root_dir', type=str)
-    parser.add_argument('--result_path', type=str)
-    parser.add_argument('--x_begin', type=int)
-    parser.add_argument('--x_end', type=int)
-    parser.add_argument('--x_step', type=int)
-    parser.add_argument('--y_begin', type=int)
-    parser.add_argument('--y_end', type=int)
-    parser.add_argument('--y_step', type=int)
-    parser.add_argument('--seg_width', type=int)
-    parser.add_argument('--seg_height', type=int)
-    parser.add_argument('--proc_num', type=int)
-    parser.add_argument('--channels', type=int, choices=[1, 3],
-                        help='Number of channels: 1 for grayscale, 3 for RGB')
+    parser.add_argument('--root_dir', type=str,required=True)
+    parser.add_argument('--result_path', type=str,required=True)
+    parser.add_argument('--x_begin', type=int,required=True)
+    parser.add_argument('--x_end', type=int,required=True)
+    parser.add_argument('--x_step', type=int,required=True)
+    parser.add_argument('--y_begin', type=int,required=True)
+    parser.add_argument('--y_end', type=int,required=True)
+    parser.add_argument('--y_step', type=int,required=True)
+    parser.add_argument('--tile_width', type=int,required=True)
+    parser.add_argument('--tile_height', type=int,required=True)
+    parser.add_argument('--tile_format', type=str,required=True)
+    parser.add_argument('--tile_channels', type=int, choices=[1, 3],
+                        help='Number of channels: 1 for grayscale, 3 for RGB', required=True)
+    parser.add_argument('--proc_num', type=int,required=True)
+
+
     args = parser.parse_known_args()[0]
 
     x_num = int((args.x_end - args.x_begin) / args.x_step) + 1
     y_num = int((args.y_end - args.y_begin) / args.y_step) + 1
-    channels = args.channels
+    channels = args.tile_channels
 
     # 根据通道数计算共享内存大小
     try:
         shm = shared_memory.SharedMemory(
             create=True,
-            size=x_num * y_num * args.seg_width * args.seg_height * channels
+            size=x_num * y_num * args.tile_width * args.tile_height * channels
         )
-    except:
-        print("系统资源不足，任务中止！")
+    except Exception as e:
+        print("系统资源不足，任务中止！",e)
         sys.exit()
     shm_name = shm.name
-    tot_width, tot_height = x_num * args.seg_width, y_num * args.seg_height
+    tot_width, tot_height = x_num * args.tile_width, y_num * args.tile_height
 
     # 根据通道数创建不同形状的数组
     if channels == 1:
@@ -89,9 +92,9 @@ if __name__ == "__main__":
                 x_idx,
                 y_idx,
                 os.path.join(args.root_dir, str(args.x_begin + x_idx * args.x_step),
-                             str(args.y_begin + y_idx * args.y_step)) + ".png",
-                args.seg_width,
-                args.seg_height,
+                             str(args.y_begin + y_idx * args.y_step)) + args.tile_format,
+                args.tile_width,
+                args.tile_height,
                 tot_width,
                 tot_height,
                 shm_name,

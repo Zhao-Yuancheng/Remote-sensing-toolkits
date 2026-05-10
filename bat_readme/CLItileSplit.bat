@@ -6,8 +6,8 @@ _CLItileSplit.exe ^
 --x_step 1 ^
 --y_begin 100 ^
 --y_step 10 ^
---seg_width 1024 ^
---seg_height 1024 ^
+--tile_width 1024 ^
+--tile_height 1024 ^
 --proc_num 8 ^
 --channels 3
 

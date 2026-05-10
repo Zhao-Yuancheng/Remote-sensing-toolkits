@@ -1,25 +1,27 @@
-import urllib.request
-import subprocess
+import concurrent.futures
+import math
 import os
 import random
-import math
+import subprocess
 import sys
-import concurrent.futures
 import threading
-import traceback
 import time
+import traceback
+import urllib.request
 from datetime import datetime
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from urllib.error import URLError, HTTPError
-from PySide6.QtCore import QObject, Signal, Slot, QThread,Qt
+
+from PySide6.QtCore import QObject, Signal, QThread, Qt
 from PySide6.QtWidgets import *
 
-source_dict={
-    0:"Google Earth",
-    1:"高德矢量底图",
-    2:"高德卫星影像",
-    3:"高德路网标记",
+source_dict = {
+    0: "Google Earth",
+    1: "高德矢量底图",
+    2: "高德卫星影像",
+    3: "高德路网标记",
 }
+
 
 # 线程安全的计数器
 class ThreadSafeCounter:
@@ -60,7 +62,8 @@ class GoogleMapDownloader(QObject):
     download_complete = Signal(dict)  # 完成信号: 结果字典
     status_changed = Signal(str)  # 状态变化信号
 
-    def __init__(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,timeout,retries_num,
+    def __init__(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,
+                 timeout, retries_num,
                  parent=None):
         super().__init__(parent)
         self.source = source
@@ -98,7 +101,7 @@ class GoogleMapDownloader(QObject):
             (1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
         return (xtile, ytile)
 
-    def download_single_image(self, Tpath: str, Spath: str, x: int, y: int, timeout:int,
+    def download_single_image(self, Tpath: str, Spath: str, x: int, y: int, timeout: int,
                               max_retries: int) -> bool:
         """
         下载单个图片，带重试机制
@@ -177,7 +180,7 @@ class GoogleMapDownloader(QObject):
         返回: (x, y, 是否成功)
         """
         Tpath, Spath, x, y = args
-        success = self.download_single_image(Tpath, Spath, x, y,self.timeout, self.retries_num)
+        success = self.download_single_image(Tpath, Spath, x, y, self.timeout, self.retries_num)
         return x, y, success
 
     def parallel_download(self, tasks: List[Tuple[str, str, int, int]]) -> dict:
@@ -281,7 +284,7 @@ class GoogleMapDownloader(QObject):
                 if self._stop_requested:
                     break
 
-                path = os.path.join(self.root_dir, source_dict[self.source],str(zoom), str(x))
+                path = os.path.join(self.root_dir, source_dict[self.source], str(zoom), str(x))
 
                 for y in range(lefttop[1], rightbottom[1]):
                     if self.source == 0:
@@ -291,7 +294,7 @@ class GoogleMapDownloader(QObject):
                     elif self.source == 2:
                         tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={zoom}"  # 高德卫星影像
                     else:
-                        tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={zoom}" #高德路网标记
+                        tilepath = f"https://webst01.is.autonavi.com/appmaptile?style=8&x={x}&y={y}&z={zoom}"  # 高德路网标记
 
                     filepath = os.path.join(path, f"{y}.png")
                     tasks.append((tilepath, filepath, x, y))
@@ -332,7 +335,6 @@ class GoogleMapDownloader(QObject):
                                      f"{error_msg}\n堆栈跟踪:\n{traceback.format_exc()}")
 
 
-
 class DownloadManager:
     """下载管理器，用于在PySide2界面中管理下载"""
 
@@ -341,11 +343,13 @@ class DownloadManager:
         self.downloader = None
         self.download_thread = None
 
-    def start_download(self, source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers ,timeout,retries_num):
+    def start_download(self, source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,
+                       timeout, retries_num):
         """开始下载"""
         # 创建下载器
         self.downloader = GoogleMapDownloader(
-            source,level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers,timeout,retries_num
+            source, level, LT_lat, LT_lon, RB_lat, RB_lon, root_dir, max_workers, timeout,
+            retries_num
         )
 
         # 创建线程
@@ -382,7 +386,6 @@ class DownloadManager:
         """处理下载错误"""
         if self.parent_widget:
             # 可以使用QMessageBox显示错误
-            from PySide2.QtWidgets import QMessageBox
             QMessageBox.critical(
                 self.parent_widget,
                 f"下载错误: {error_title}",
@@ -402,7 +405,6 @@ class DownloadManager:
         """处理下载完成"""
         if self.parent_widget:
             # 显示完成信息
-            from PySide2.QtWidgets import QMessageBox
             QMessageBox.information(
                 self.parent_widget,
                 "下载完成",
@@ -465,7 +467,6 @@ class MainWindow(QMainWindow):
         self.source_comboBox.setCurrentIndex(2)
         form_layout.addRow("数据源:", self.source_comboBox)
 
-
         self.level_spin = QSpinBox()
         self.level_spin.setRange(1, 22)
         self.level_spin.setValue(16)
@@ -517,7 +518,7 @@ class MainWindow(QMainWindow):
         self.timeout_label = QLabel()
         self.timeout_label.setFixedWidth(80)
         self.timeout_label.setText("超时(s)：")
-        self.timeout_label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+        self.timeout_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.timeout_spin = QSpinBox()
         self.timeout_spin.setRange(1, 1000)
         self.timeout_spin.setValue(3)
@@ -525,7 +526,7 @@ class MainWindow(QMainWindow):
         self.retries_label = QLabel()
         self.retries_label.setFixedWidth(100)
         self.retries_label.setText("重试次数：")
-        self.retries_label.setAlignment(Qt.AlignRight|Qt.AlignVCenter)
+        self.retries_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.retries_spin = QSpinBox()
         self.retries_spin.setRange(0, 1000)
         self.retries_spin.setValue(2)
@@ -537,7 +538,7 @@ class MainWindow(QMainWindow):
         network_layout.addWidget(self.retries_label)
         network_layout.addWidget(self.retries_spin)
 
-        form_layout.addRow("并发线程数:",network_layout)
+        form_layout.addRow("并发线程数:", network_layout)
 
         # form_layout.addRow("并发线程数:", self.workers_spin)
 
@@ -720,7 +721,7 @@ class MainWindow(QMainWindow):
         root_dir = self.path_edit.text().strip()
         max_workers = self.workers_spin.value()
         timeout = self.timeout_spin.value()
-        retries_num=self.retries_spin.value()
+        retries_num = self.retries_spin.value()
 
         # 重置 UI 状态
         self.progress_bar.setValue(0)
@@ -740,7 +741,8 @@ class MainWindow(QMainWindow):
 
         # 启动后台下载
         self.download_manager.start_download(
-            source,level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers,timeout,retries_num
+            source, level, lt_lat, lt_lon, rb_lat, rb_lon, root_dir, max_workers, timeout,
+            retries_num
         )
 
         # 将下载器信号连接到主界面（DownloadManager 内部已处理流程，这里补充 UI 反馈）
@@ -794,13 +796,25 @@ class MainWindow(QMainWindow):
         self.status_bar.showMessage("下载完成")
 
         if failed_cnt > 0:
-            QMessageBox.warning(self, "下载完成",
-                                f"任务已完成，但存在 {failed_cnt} 个文件下载失败。\n"
-                                f"总耗时: {elapsed:.2f} 秒\n"
-                                f"详细错误请查看日志文件及上方日志窗口。")
+            reply = QMessageBox.question(self, "完成",
+                                         f"任务已完成，但存在 {failed_cnt} 个文件下载失败。\n"
+                                         f"总耗时: {elapsed:.2f} 秒\n"
+                                         f"详细错误请查看日志文件及上方日志窗口。\n\n"
+                                         f"是否打开输出文件目录？",
+                                         QMessageBox.Yes | QMessageBox.No)
         else:
-            QMessageBox.information(self, "下载完成",
-                                    f"全部下载成功！\n总耗时: {elapsed:.2f} 秒")
+            reply = QMessageBox.question(self, "完成",
+                                         f"全部下载成功！\n总耗时: {elapsed:.2f} 秒\n\n是否打开输出文件目录？",
+                                         QMessageBox.Yes | QMessageBox.No)
+        if reply == QMessageBox.Yes:
+            output_dir = os.path.dirname(self.path_edit.text())
+            if os.path.exists(output_dir):
+                if sys.platform == "win32":
+                    os.startfile(output_dir)
+                elif sys.platform == "darwin":
+                    os.system(f'open "{output_dir}"')
+                else:
+                    os.system(f'xdg-open "{output_dir}"')
 
     def on_downloader_status(self, status):
         # 处理内部状态消息，特别是“被中断/被取消”等需要恢复 UI 的场景
@@ -836,28 +850,24 @@ class MainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-
-
     # 连接信号到控制台输出
-    def on_error(title, detail):
-        print(f"\n[错误] {title}: {detail}")
-
-
-    def on_progress(current, total, success):
-        print(f"\r进度: {current}/{total} (成功: {success})", end="")
-
-
-    def on_complete(results):
-        print(f"\n下载完成!")
-        print(f"总耗时: {results.get('elapsed_time', 0):.2f}秒")
-        print(f"成功: {results.get('success', 0)}")
-        print(f"失败: {results.get('failed', 0)}")
-
-
-    def on_status(status):
-        print(f"[状态] {status}")
-
-
+    # def on_error(title, detail):
+    #     print(f"\n[错误] {title}: {detail}")
+    #
+    #
+    # def on_progress(current, total, success):
+    #     print(f"\r进度: {current}/{total} (成功: {success})", end="")
+    #
+    #
+    # def on_complete(results):
+    #     print(f"\n下载完成!")
+    #     print(f"总耗时: {results.get('elapsed_time', 0):.2f}秒")
+    #     print(f"成功: {results.get('success', 0)}")
+    #     print(f"失败: {results.get('failed', 0)}")
+    #
+    #
+    # def on_status(status):
+    #     print(f"[状态] {status}")
     # downloader.error_occurred.connect(on_error)
     # downloader.progress_updated.connect(on_progress)
     # downloader.download_complete.connect(on_complete)
@@ -866,6 +876,9 @@ if __name__ == "__main__":
     # # 启动下载
     # downloader.start_download()
     app = QApplication(sys.argv)
+    app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+    app.setStyle(QStyleFactory.create("Fusion"))
+
     window = MainWindow()
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

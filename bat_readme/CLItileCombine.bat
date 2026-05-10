@@ -7,8 +7,8 @@ _CLItileCombine.exe ^
 --y_begin 822436 ^
 --y_end 823328 ^
 --y_step 4 ^
---seg_width 1024 ^
---seg_height 1024 ^
+--tile_width 1024 ^
+--tile_height 1024 ^
 --proc_num 8
 
 pause

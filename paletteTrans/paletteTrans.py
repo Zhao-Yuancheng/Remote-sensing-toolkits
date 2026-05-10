@@ -16,7 +16,7 @@ from PIL import Image
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QTextEdit, QSpinBox,
-    QFileDialog, QMessageBox, QGroupBox, QProgressBar, QSizePolicy
+    QFileDialog, QMessageBox, QGroupBox, QProgressBar, QStyleFactory
 )
 from PySide6.QtCore import Qt, Signal, QThread, QTimer
 from PySide6.QtGui import QTextCursor, QColor, QFont, QPalette
@@ -30,7 +30,6 @@ except ImportError:
     process_palette_block = None
 
 
-# 模块级工作函数（必须放在类外部，否则无法序列化）
 def worker_process_py(
         shm_input_name: str,
         shm_output_name: str,
@@ -154,34 +153,28 @@ class ConversionThread(QThread):
             self.is_running = False
 
     def stop(self):
-        """停止转换"""
         self.is_running = False
         self.terminate()
 
     def log(self, message, color="black"):
-        """发送日志消息"""
         self.log_signal.emit(message, color)
 
     def create_shared_memory_blocks(self, input_path: str):
         """创建输入输出共享内存块"""
-        # 使用PIL打开图像
         image = Image.open(input_path)
 
         # 检查是否为调色板图像
         if image.mode != 'P':
             raise ValueError("输入文件不是调色板图像 (P mode)")
 
-        # 读取数据
         data = np.array(image)
         input_shape = data.shape
         input_dtype = data.dtype
 
-        # 获取调色板
         palette = image.getpalette()
         if palette is None:
             raise ValueError("输入文件没有调色板")
 
-        # 创建调色板查找表
         palette_lut = np.zeros((256, 3), dtype=np.uint8)
 
         # PIL的调色板是长度为768的列表 [R0, G0, B0, R1, G1, B1, ...]
@@ -193,7 +186,6 @@ class ConversionThread(QThread):
         # 计算输出形状
         output_shape = (3, input_shape[0], input_shape[1])
 
-        # 创建输入共享内存
         shm_input = shared_memory.SharedMemory(
             create=True,
             size=data.nbytes
@@ -201,13 +193,11 @@ class ConversionThread(QThread):
         input_array = np.ndarray(input_shape, dtype=input_dtype, buffer=shm_input.buf)
         np.copyto(input_array, data)
 
-        # 创建输出共享内存
         shm_output = shared_memory.SharedMemory(
             create=True,
             size=int(np.prod(output_shape) * np.dtype(np.uint8).itemsize)
         )
 
-        # 初始化输出为0
         output_array = np.ndarray(output_shape, dtype=np.uint8, buffer=shm_output.buf)
         output_array[:] = 0
 
@@ -273,8 +263,7 @@ class ConversionThread(QThread):
         start_time = time.time()
 
         try:
-            # 在Windows上，我们需要确保在if __name__ == '__main__'保护下运行
-            # 但在这里，我们使用spawn方法，并且工作函数已经是模块级别的
+            # 使用spawn方法，安全
             with mp.get_context('spawn').Pool(processes=self.proc_num) as pool:
                 if process_palette_block is not None:
                     results = pool.starmap(worker_process_cy, args_list)
@@ -299,13 +288,12 @@ class ConversionThread(QThread):
             buffer=shm_output.buf
         ).copy()
 
-        # 6. 使用PIL保存结果
+        # 6. 保存
         self.log("保存结果...", "darkblue")
 
-        # 将(3, H, W)转换为(H, W, 3)
+        # (3, H, W)->(H, W, 3)
         rgb_array = np.transpose(output_array, (1, 2, 0))
 
-        # 创建PIL图像并保存
         rgb_image = Image.fromarray(rgb_array, mode='RGB')
         rgb_image.save(self.output_path)
 
@@ -657,6 +645,8 @@ def main():
 
     # 创建应用
     app = QApplication(sys.argv)
+    app.styleHints().setColorScheme(Qt.ColorScheme.Light)
+    app.setStyle(QStyleFactory.create("Fusion"))
     app.setApplicationName("TIFF调色板转RGB工具")
 
     # 创建主窗口

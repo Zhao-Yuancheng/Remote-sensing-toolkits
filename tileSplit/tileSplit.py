@@ -62,8 +62,8 @@ def run_tile_split(params, shm_name, progress_shm_name, x_num, y_num, progress_c
         x_step = params['x_step']
         y_begin = params['y_begin']
         y_step = params['y_step']
-        seg_width = params['seg_width']
-        seg_height = params['seg_height']
+        tile_width = params['tile_width']
+        tile_height = params['tile_height']
         proc_num = params['proc_num']
         h = params['h']
         w = params['w']
@@ -79,10 +79,10 @@ def run_tile_split(params, shm_name, progress_shm_name, x_num, y_num, progress_c
                     x_idx * x_step + x_begin,  # 保存的x
                     y_idx * y_step + y_begin,  # 保存的y
                     result_format,
-                    x_idx * seg_width,  # 图上x1
-                    y_idx * seg_height,  # 图上y1
-                    (x_idx + 1) * seg_width,  # 图上x2
-                    (y_idx + 1) * seg_height,  # 图上y2
+                    x_idx * tile_width,  # 图上x1
+                    y_idx * tile_height,  # 图上y1
+                    (x_idx + 1) * tile_width,  # 图上x2
+                    (y_idx + 1) * tile_height,  # 图上y2
                     shm_name,
                     h,
                     w,
@@ -271,8 +271,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             y_step = int(self.yStepEdit.text())
 
             # 瓦片属性
-            seg_width = int(self.tileWidthLineEdit.text())
-            seg_height = int(self.tileHeightLineEdit.text())
+            tile_width = int(self.tileWidthLineEdit.text())
+            tile_height = int(self.tileHeightLineEdit.text())
 
             # 进程数
             proc_num_text = self.nProcEdit.text().strip()
@@ -306,8 +306,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 return
 
             # 计算瓦片数量
-            x_num = w // seg_width
-            y_num = h // seg_height
+            x_num = w // tile_width
+            y_num = h // tile_height
 
             if x_num == 0 or y_num == 0:
                 QtWidgets.QMessageBox.warning(self, "警告", "瓦片尺寸大于图像尺寸，无法分割！")
@@ -328,7 +328,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.processBtn.setText("开始处理")
                 return
 
-            if seg_width <= 0 or seg_height <= 0:
+            if tile_width <= 0 or tile_height <= 0:
                 QtWidgets.QMessageBox.warning(self, "警告", "瓦片尺寸必须大于0！")
                 self.processBtn.setEnabled(True)
                 self.processBtn.setText("开始处理")
@@ -381,8 +381,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 'x_step': x_step,
                 'y_begin': y_begin,
                 'y_step': y_step,
-                'seg_width': seg_width,
-                'seg_height': seg_height,
+                'tile_width': tile_width,
+                'tile_height': tile_height,
                 'proc_num': proc_num,
                 'h': h,
                 'w': w,
@@ -456,7 +456,22 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
         self.processBtn.setText("开始处理")
 
         if success:
-            QtWidgets.QMessageBox.information(self, "成功", message)
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "成功",
+                message + "\n是否打开输出文件目录？",
+                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+            )
+            if reply == QtWidgets.QMessageBox.Yes:
+                output_dir = self.tileDirEdit.text()
+                if os.path.exists(output_dir):
+                    if sys.platform == "win32":
+                        os.startfile(output_dir)
+                    elif sys.platform == "darwin":
+                        os.system(f'open "{output_dir}"')
+                    else:
+                        os.system(f'xdg-open "{output_dir}"')
+            self.statusbar.showMessage("处理完成！", 5000)
             self.statusbar.showMessage("处理完成！", 5000)
         else:
             QtWidgets.QMessageBox.critical(self, "错误", message)
@@ -468,5 +483,7 @@ if __name__ == '__main__':
     freeze_support()
 
     app = QtWidgets.QApplication(sys.argv)
+    app.styleHints().setColorScheme(QtCore.Qt.ColorScheme.Light)
+    app.setStyle(QtWidgets.QStyleFactory.create("Fusion"))
     window = MyApp()
     sys.exit(app.exec())
