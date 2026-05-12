@@ -1,8 +1,8 @@
 # python setup.py build_ext --inplace
 
-from setuptools import setup
-from Cython.Build import cythonize
 import numpy as np
+from Cython.Build import cythonize
+from setuptools import setup
 
 setup(
     ext_modules=cythonize(

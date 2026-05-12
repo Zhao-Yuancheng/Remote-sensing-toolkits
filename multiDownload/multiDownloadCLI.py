@@ -8,6 +8,7 @@ import time
 import urllib.request
 from typing import List, Tuple
 from urllib.error import URLError, HTTPError
+
 from tqdm import tqdm
 
 # 数据源定义

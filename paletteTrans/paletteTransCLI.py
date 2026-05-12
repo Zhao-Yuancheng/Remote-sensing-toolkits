@@ -4,17 +4,17 @@ TIFF调色板转RGB - 多进程优化版（使用PIL）
 支持将单通道调色板TIFF转换为标准RGB图像，适合AI训练使用
 """
 
+import argparse
 import multiprocessing as mp
 import os
 import sys
 import time
-import argparse
 from multiprocessing import shared_memory, freeze_support
 from typing import Tuple, List
-from tqdm import tqdm
 
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 
 def create_shared_memory_blocks(

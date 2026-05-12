@@ -3,8 +3,8 @@ import time
 import tkinter as tk
 from multiprocessing import Pool
 from multiprocessing import cpu_count
-from multiprocessing import shared_memory
 from multiprocessing import freeze_support
+from multiprocessing import shared_memory
 from tkinter import filedialog, messagebox, simpledialog
 
 # import cv2
@@ -152,7 +152,8 @@ def draw_horizontal_line_robust(image, y, line_width=3, color=(255, 0, 0)):
 
     return image
 
-def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
+
+def draw_vertical_line_robust(image, x, line_width=3, color=(255, 0, 0)):
     """竖直线"""
     h, w = image.shape[:2]
 
@@ -170,6 +171,7 @@ def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
         image[:, left:right] = color
 
     return image
+
 
 def process_image():
     global h, w, original_image, image, text_var
@@ -192,10 +194,12 @@ def process_image():
 
     try:
         input_image = skimage.io.imread(INPUT_FILE_PATH)
-        if len(input_image.shape)==2:
+        if len(input_image.shape) == 2:
             temp_root = tk.Toplevel()
             temp_root.withdraw()
-            messagebox.showerror("错误","该图片通道数为1，非RGB模式。请检查是否为灰度L或调色板P模式。",parent = temp_root)
+            messagebox.showerror("错误",
+                                 "该图片通道数为1，非RGB模式。请检查是否为灰度L或调色板P模式。",
+                                 parent=temp_root)
             temp_root.destroy()
             return
 
@@ -265,9 +269,9 @@ def process_image():
     for i, boundary_v in enumerate(peaks_v):
         # cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
         #          (255, 0, 0), 3)
-        draw_vertical_line_robust(show_split_image,boundary_v,line_width=3,color=(255, 0, 0))
+        draw_vertical_line_robust(show_split_image, boundary_v, line_width=2, color=(255, 0, 0))
     for i, boundary_h in enumerate(peaks_h):
-        draw_horizontal_line_robust(show_split_image,boundary_h,line_width=3,color=(255, 0, 0))
+        draw_horizontal_line_robust(show_split_image, boundary_h, line_width=2, color=(255, 0, 0))
 
     plt.imshow(show_split_image)
     plt.title("检测到的分割线")
@@ -392,11 +396,11 @@ def process_image():
     for i, boundary_v in enumerate(peaks_v_sorted):
         # cv2.line(show_split_image, (boundary_v, 0), (boundary_v, image.shape[0]),
         #          (0, 255, 0), 3)
-        draw_vertical_line_robust(show_split_image,boundary_v,3,(0,255,0))
+        draw_vertical_line_robust(show_split_image, boundary_v, 3, (0, 255, 0))
     for i, boundary_h in enumerate(peaks_h_sorted):
         # cv2.line(show_split_image, (0, boundary_h), (image.shape[1], boundary_h),
         #          (0, 255, 0), 3)
-        draw_horizontal_line_robust(show_split_image,boundary_h,3,(0,255,0))
+        draw_horizontal_line_robust(show_split_image, boundary_h, 3, (0, 255, 0))
 
     plt.imshow(show_split_image)
     plt.title("选中的分割线（绿色）")
@@ -500,7 +504,6 @@ def process_image():
     plt.axis('off')
     plt.tight_layout()
     plt.show(block=False)
-    
 
     # 确认是否继续
     # 创建临时隐藏的顶级窗口

@@ -1,12 +1,15 @@
 import multiprocessing
-import sys
-from ui_tileSplit import Ui_MainWindow
-from PySide6 import QtCore, QtWidgets, QtGui
-from multiprocessing import Pool, shared_memory,freeze_support
 import os
-from PIL import Image
+import sys
+from multiprocessing import Pool, shared_memory, freeze_support
+
 import numpy as np
 import tifffile
+from PIL import Image
+from PySide6 import QtCore, QtWidgets, QtGui
+
+from ui_tileSplit import Ui_MainWindow
+
 
 # 瓦片分割函数
 def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_name, h, w, channels,
@@ -281,7 +284,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             # 打开图像获取实际参数
             try:
                 if open_path.endswith(('.tif', '.tiff')):
-                    input_img = tifffile.imread(open_path,maxworkers=multiprocessing.cpu_count()//2)
+                    input_img = tifffile.imread(open_path,
+                                                maxworkers=multiprocessing.cpu_count() // 2)
                 else:
                     input_img = np.array(Image.open(open_path), dtype=np.uint8)
                 h, w = input_img.shape[:2]
@@ -341,8 +345,9 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
                 return
 
             if channels == 1:
-                reply = QtWidgets.QMessageBox.question(self,"警告","该图像通道数为1，请检查是否为灰度L或调色板P模式。\n是否继续？",
-                                                       QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+                reply = QtWidgets.QMessageBox.question(self, "警告",
+                                                       "该图像通道数为1，请检查是否为灰度L或调色板P模式。\n是否继续？",
+                                                       QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
                 if reply == QtWidgets.QMessageBox.No:
                     self.processBtn.setEnabled(True)
                     self.processBtn.setText("开始处理")

@@ -22,7 +22,6 @@ except ImportError:
     process_palette_block = None
 
 
-
 def create_shared_memory_blocks(
         input_path: str
 ) -> Tuple[shared_memory.SharedMemory, shared_memory.SharedMemory,

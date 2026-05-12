@@ -1,16 +1,11 @@
 # 新增必要的导入
 
 import io
-import sys
-from PIL import Image
-from term_image.image import AutoImage
-from multiprocessing import freeze_support
-
 import math
 import time
-
 from multiprocessing import Pool
 from multiprocessing import cpu_count
+from multiprocessing import freeze_support
 from multiprocessing import shared_memory
 
 # import cv2
@@ -18,13 +13,14 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import skimage
+import skimage.io
+import skimage.transform
 from PIL import Image, ImageFile
 from scipy import signal
 from scipy.ndimage import gaussian_filter
 from scipy.signal import find_peaks
-import skimage.io
-import skimage.transform
 from skimage.color import rgb2lab, rgba2rgb
+from term_image.image import AutoImage
 
 matplotlib.use('Agg')  # 改为非交互式后端，因为不再需要GUI窗口
 # ... (w, h, original_image, image等全局变量定义保持不变) ...
@@ -218,7 +214,8 @@ def draw_horizontal_line_robust(image, y, line_width=3, color=(255, 0, 0)):
 
     return image
 
-def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
+
+def draw_vertical_line_robust(image, x, line_width=3, color=(255, 0, 0)):
     """竖直线"""
     h, w = image.shape[:2]
 
@@ -236,6 +233,7 @@ def draw_vertical_line_robust(image,x,line_width=3,color=(255,0,0)):
         image[:, left:right] = color
 
     return image
+
 
 # ========== 修改现有的 process_image 函数 ==========
 def process_image():
@@ -267,7 +265,7 @@ def process_image():
 
     try:
         input_image = skimage.io.imread(INPUT_FILE_PATH)
-        if len(input_image.shape)==2:
+        if len(input_image.shape) == 2:
             print("错误：该图片通道数为1，非RGB模式。请检查是否为灰度L或调色板P模式。")
         elif input_image.shape[2] == 4:
             input_image = rgba2rgb(input_image) * 255
@@ -304,7 +302,7 @@ def process_image():
     # 等待用户确认（替换 messagebox.askyesno）
     print("\n是否继续处理？(Y/n):")
     response = input("> ").strip().lower()
-    if response not in ['y', 'yes','Y', 'Yes','是', '1','']:
+    if response not in ['y', 'yes', 'Y', 'Yes', '是', '1', '']:
         print("操作已取消。")
         return
 
@@ -318,9 +316,9 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v):
-        draw_vertical_line_robust(show_split_image, boundary_v, line_width=3, color=(255, 0, 0))
+        draw_vertical_line_robust(show_split_image, boundary_v, line_width=2, color=(255, 0, 0))
     for i, boundary_h in enumerate(peaks_h):
-        draw_horizontal_line_robust(show_split_image, boundary_h, line_width=3, color=(255, 0, 0))
+        draw_horizontal_line_robust(show_split_image, boundary_h, line_width=2, color=(255, 0, 0))
 
     plt.imshow(show_split_image)
     plt.axis('off')
@@ -397,9 +395,9 @@ def process_image():
     plt.figure(figsize=(15, 8))
     show_split_image = image.copy()
     for i, boundary_v in enumerate(peaks_v_sorted):
-        draw_vertical_line_robust(show_split_image,boundary_v,3,(0,255,0))
+        draw_vertical_line_robust(show_split_image, boundary_v, 3, (0, 255, 0))
     for i, boundary_h in enumerate(peaks_h_sorted):
-        draw_horizontal_line_robust(show_split_image,boundary_h,3,(0,255,0))
+        draw_horizontal_line_robust(show_split_image, boundary_h, 3, (0, 255, 0))
     plt.imshow(show_split_image)
     plt.axis('off')
     plt.tight_layout()
@@ -409,7 +407,7 @@ def process_image():
     # 6. 确认是否继续（替换 messagebox.askyesno）
     print("\n是否继续处理？(Y/n):")
     response = input("> ").strip().lower()
-    if response not in ['y', 'yes','Y', 'Yes','是', '1','']:
+    if response not in ['y', 'yes', 'Y', 'Yes', '是', '1', '']:
         print("操作已取消。")
         return
 
@@ -488,7 +486,7 @@ def process_image():
     # 8. 确认是否继续处理原图（替换 messagebox.askyesno）
     print("\n预览图已生成，是否继续处理原图？(Y/n):")
     response = input("> ").strip().lower()
-    if response not in ['y', 'yes','Y','Yes', '是', '1','']:
+    if response not in ['y', 'yes', 'Y', 'Yes', '是', '1', '']:
         print("操作已取消。")
         return
 

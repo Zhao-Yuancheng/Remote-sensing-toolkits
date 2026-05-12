@@ -2,9 +2,10 @@ import argparse
 import os
 import sys
 from multiprocessing import Pool, freeze_support, Manager
-from PIL import Image
-import numpy as np
 from multiprocessing.shared_memory import SharedMemory
+
+import numpy as np
+from PIL import Image
 from tqdm import tqdm
 
 

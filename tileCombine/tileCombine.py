@@ -1,17 +1,18 @@
+import os
 import sys
+from multiprocessing import Pool, shared_memory, freeze_support
 
+import numpy as np
+from PIL import Image
+from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtWidgets import QMessageBox
 
 from ui_tileCombine import Ui_MainWindow
-from PySide6 import QtCore, QtWidgets, QtGui
-from multiprocessing import Pool, shared_memory,freeze_support
-import os
-from PIL import Image
-import numpy as np
 
 
 # 瓦片合并函数
-def integrate(idx, x_idx, y_idx, file_path, tile_width, tile_height, tot_width, tot_height, shm_name,
+def integrate(idx, x_idx, y_idx, file_path, tile_width, tile_height, tot_width, tot_height,
+              shm_name,
               channels, x_num, y_num, progress_shm_name):
     try:
         existing_shm = shared_memory.SharedMemory(name=shm_name, create=False)
@@ -47,7 +48,7 @@ def integrate(idx, x_idx, y_idx, file_path, tile_width, tile_height, tot_width, 
         raise
 
 
-def run_tile_combine(params,progress_shm_name,tile_ext, progress_callback=None):
+def run_tile_combine(params, progress_shm_name, tile_ext, progress_callback=None):
     """执行瓦片合并的主要函数"""
     try:
         # 从参数中获取值
@@ -123,7 +124,6 @@ def run_tile_combine(params,progress_shm_name,tile_ext, progress_callback=None):
                 shm.unlink()
                 raise
 
-
         # 根据通道数保存图片
         if channels == 1:
             result = Image.fromarray(totMap, mode='L')
@@ -133,7 +133,6 @@ def run_tile_combine(params,progress_shm_name,tile_ext, progress_callback=None):
         result.save(result_path)
         shm.close()
         shm.unlink()
-
 
         return True, "合并完成！"  # 返回进度图
 
@@ -163,7 +162,7 @@ class WorkerThread(QtCore.QThread):
                                       buffer=progress_shm.buf)
 
             # 运行合并函数
-            success, message = run_tile_combine(self.params,self.progress_shm_name,self.tile_ext)
+            success, message = run_tile_combine(self.params, self.progress_shm_name, self.tile_ext)
 
             # 发送最终进度
             self.progress_updated.emit(progress_map.copy())
@@ -190,7 +189,7 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
         self.progress_map = None
         self.x_num = 0
         self.y_num = 0
-        self.tile_ext=None
+        self.tile_ext = None
 
     def setup(self):
         # 连接按钮点击/更改事件
@@ -234,7 +233,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
 
                 # 在状态栏显示进度
                 if progress_percent == 100:
-                    self.statusbar.showMessage(f"处理进度: {completed}/{total} ({progress_percent}%)，正在保存……")
+                    self.statusbar.showMessage(
+                        f"处理进度: {completed}/{total} ({progress_percent}%)，正在保存……")
                 else:
                     self.statusbar.showMessage(
                         f"处理进度: {completed}/{total} ({progress_percent}%)")
@@ -252,37 +252,41 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
     def set_other_params(self):
         dir_path = self.tileDirEdit.text()
         try:
-            x_dir_list = [i for i in os.listdir(dir_path) if i.isdigit() and os.path.isdir(os.path.join(dir_path,i))]
+            x_dir_list = [i for i in os.listdir(dir_path) if
+                          i.isdigit() and os.path.isdir(os.path.join(dir_path, i))]
         except:
             return
         if len(x_dir_list):
-            y0_file_list = [i for i in os.listdir(os.path.join(dir_path,x_dir_list[0]))
-                           if i.endswith((".jpg", ".png", ".gif",".jpeg", ".tif",".tiff",".bmp",".webp"))
-                           and os.path.isfile(os.path.join(dir_path,x_dir_list[0],i))
-                           and os.path.splitext(i)[0].isdigit()]
+            y0_file_list = [i for i in os.listdir(os.path.join(dir_path, x_dir_list[0]))
+                            if i.endswith(
+                    (".jpg", ".png", ".gif", ".jpeg", ".tif", ".tiff", ".bmp", ".webp"))
+                            and os.path.isfile(os.path.join(dir_path, x_dir_list[0], i))
+                            and os.path.splitext(i)[0].isdigit()]
             self.tile_ext = os.path.splitext(y0_file_list[0])[1]
             num_x_dir_list = [int(i) for i in x_dir_list]
             self.xStartEdit.setText(str(min(num_x_dir_list)))
             self.xEndEdit.setText(str(max(num_x_dir_list)))
-            self.xStepEdit.setText(str(((max(num_x_dir_list) - min(num_x_dir_list))//len(num_x_dir_list)+1)))
+            self.xStepEdit.setText(
+                str(((max(num_x_dir_list) - min(num_x_dir_list)) // len(num_x_dir_list) + 1)))
             if len(y0_file_list):
                 num_y0_file_list = [int(os.path.splitext(i)[0]) for i in y0_file_list]
                 self.yStartEdit.setText(str(min(num_y0_file_list)))
                 self.yEndEdit.setText(str(max(num_y0_file_list)))
-                self.yStepEdit.setText(str(((max(num_y0_file_list)-min(num_y0_file_list))//len(num_y0_file_list)+1)))
+                self.yStepEdit.setText(str(((max(num_y0_file_list) - min(num_y0_file_list)) // len(
+                    num_y0_file_list) + 1)))
                 try:
-                    tmp_img = Image.open(os.path.join(dir_path,x_dir_list[0],y0_file_list[0]))
+                    tmp_img = Image.open(os.path.join(dir_path, x_dir_list[0], y0_file_list[0]))
                     self.tileChannelsLineEdit.setText(str(len(tmp_img.split())))
                     self.tileWidthLineEdit.setText(str(tmp_img.width))
                     self.tileLengthLineEdit.setText(str(tmp_img.height))
                 except:
                     return
 
-
     def browse_save_file(self):
         """浏览保存文件"""
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
-            self, "选择保存文件", "", "PNG Files (*.png);;TIFF Files (*.tif);;JPEG Files (*.jpg);;All Files (*)"
+            self, "选择保存文件", "",
+            "PNG Files (*.png);;TIFF Files (*.tif);;JPEG Files (*.jpg);;All Files (*)"
         )
         if file_path:
             self.saveFileEdit.setText(file_path)
@@ -373,8 +377,9 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
 
             # 提醒P模式
             if channels == 1:
-                reply = QtWidgets.QMessageBox.question(self,"警告","该图像通道数为1，请检查是否为灰度L或调色板P模式。\n是否继续？",
-                                                       QtWidgets.QMessageBox.Yes|QtWidgets.QMessageBox.No)
+                reply = QtWidgets.QMessageBox.question(self, "警告",
+                                                       "该图像通道数为1，请检查是否为灰度L或调色板P模式。\n是否继续？",
+                                                       QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
                 if reply == QtWidgets.QMessageBox.No:
                     self.processBtn.setEnabled(True)
                     self.processBtn.setText("开始处理")
@@ -480,8 +485,8 @@ class MyApp(QtWidgets.QMainWindow, Ui_MainWindow):
             reply = QMessageBox.question(
                 self,
                 "成功",
-                message+"\n是否打开输出文件所在目录？",
-                QMessageBox.Yes|QMessageBox.No
+                message + "\n是否打开输出文件所在目录？",
+                QMessageBox.Yes | QMessageBox.No
             )
             if reply == QMessageBox.Yes:
                 output_dir = os.path.dirname(self.saveFileEdit.text())
