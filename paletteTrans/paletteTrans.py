@@ -331,13 +331,13 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(15, 15, 15, 15)
 
         # 添加标题
-        title_label = QLabel("TIFF调色板转RGB转换器")
-        title_font = QFont()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        # title_label = QLabel("TIFF调色板转RGB转换器")
+        # title_font = QFont()
+        # title_font.setPointSize(16)
+        # title_font.setBold(True)
+        # title_label.setFont(title_font)
+        # title_label.setAlignment(Qt.AlignCenter)
+        # main_layout.addWidget(title_label)
 
         # 输入文件选择区域
         input_group = QGroupBox("输入文件")

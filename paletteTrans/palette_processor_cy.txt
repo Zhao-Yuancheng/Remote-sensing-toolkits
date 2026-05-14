@@ -9,7 +9,6 @@ import numpy as np
 cimport numpy as np
 from cython.parallel import prange
 
-# 定义NumPy类型
 DTYPE_U8 = np.uint8
 ctypedef np.uint8_t DTYPE_U8_t
 
@@ -21,9 +20,6 @@ def process_palette_block(
         int end_row
 ):
     """
-    处理图像块的Cython函数
-
-    参数:
         input_array: 输入数组 (H, W)
         output_array: 输出数组 (3, H, W)
         palette_lut: 调色板查找表 (256, 3)

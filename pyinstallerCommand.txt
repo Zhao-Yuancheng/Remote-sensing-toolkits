@@ -6,6 +6,8 @@ pyinstaller -D -w -i .\icon\combine.ico .\tileCombine\tileCombine.py
 
 pyinstaller -D -w -i .\icon\balance.ico .\colorBalance\colorBalance.py
 
+pyinstaller -D -w -i .\icon\palette.ico .\paletteTrans\paletteTrans.py
+
 
 
 pyinstaller -D -i .\icon\cmd.ico .\multiDownload\multiDownloadCLI.py
@@ -16,4 +18,9 @@ pyinstaller -D -i .\icon\cmd.ico .\tileCombine\tileCombineCLI.py
 
 pyinstaller -D -i .\icon\cmd.ico .\colorBalance\colorBalanceCLI.py
 
-pyinstaller -D -i .\icon\cmd.ico .\paletteTrans\paletteTrans.py
+pyinstaller -D -i .\icon\cmd.ico .\paletteTrans\paletteTransCLI.py
+
+
+conda create -n rst python=3.10
+
+numpy scikit-image pillow matplotlib pyside6 term-image tqdm cython pyinstaller

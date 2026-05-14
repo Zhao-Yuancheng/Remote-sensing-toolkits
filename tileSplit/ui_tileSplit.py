@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 ################################################################################
-## Form generated from reading UI file 'tileSplitNMPyiM.ui'
+## Form generated from reading UI file 'tileSplitlFQtRR.ui'
 ##
 ## Created by: Qt User Interface Compiler version 5.15.15
 ##
@@ -213,7 +213,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         MainWindow.setWindowTitle(
-            QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u56fe\u751f\u6210\u5de5\u5177",
+            QCoreApplication.translate("MainWindow", u"\u74e6\u7247\u56fe\u5206\u5272\u5de5\u5177",
                                        None))
         self.label_8.setText(
             QCoreApplication.translate("MainWindow", u"\u6253\u5f00\u9065\u611f\u56fe\u50cf\uff1a",

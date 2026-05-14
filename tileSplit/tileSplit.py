@@ -56,7 +56,7 @@ def split_tile(result_root, save_x, save_y, result_format, x1, y1, x2, y2, shm_n
 
 
 def run_tile_split(params, shm_name, progress_shm_name, x_num, y_num, progress_callback=None):
-    """执行瓦片生成的主要函数"""
+    """执行瓦片分割的主要函数"""
     try:
         # 从参数中获取值
         result_root = params['result_root']
