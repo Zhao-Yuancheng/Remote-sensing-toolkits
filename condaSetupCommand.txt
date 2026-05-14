@@ -1,0 +1,3 @@
+conda create -n rst python=3.10
+
+numpy scikit-image pillow matplotlib pyside6 term-image tqdm cython pyinstaller

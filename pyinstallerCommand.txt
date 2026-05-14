@@ -20,7 +20,3 @@ pyinstaller -D -i .\icon\cmd.ico .\colorBalance\colorBalanceCLI.py
 
 pyinstaller -D -i .\icon\cmd.ico .\paletteTrans\paletteTransCLI.py
 
-
-conda create -n rst python=3.10
-
-numpy scikit-image pillow matplotlib pyside6 term-image tqdm cython pyinstaller
