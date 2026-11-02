@@ -1,0 +1,22 @@
+# Core runtime
+numpy
+Pillow
+opencv-python
+scipy
+scikit-image
+tqdm
+
+# GUI
+pyside6
+
+# Optional acceleration for paletteTrans
+Cython
+
+# Terminal image preview used by the CLI progress display
+term-image
+
+# GDAL is not installable from PyPI in a useful way; install it with conda:
+#   conda install -c conda-forge gdal
+#
+# Building the standalone executables additionally needs:
+#   pip install pyinstaller
